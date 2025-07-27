@@ -43,7 +43,6 @@ body {
     --sidebar-ring: 217.2 91.2% 59.8%;
   }
   .dark {
-    /* Keeping dark mode as a fallback, but app is light-themed */
     --background: 240 6% 10%;
     --foreground: 0 0% 98%;
     --card: 240 6% 12%;
