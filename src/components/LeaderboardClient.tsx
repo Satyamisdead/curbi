@@ -5,7 +5,8 @@ import { BottomNav } from './BottomNav';
 import { Card, CardContent } from '@/components/ui/card';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Progress } from '@/components/ui/progress';
-import { Check, Star } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
+import { Check, Star, Zap } from 'lucide-react';
 
 const achievements = [
     {
@@ -58,6 +59,35 @@ const achievements = [
     },
 ];
 
+const challenges = [
+    {
+        title: 'Weekly Reporter',
+        description: 'Report 5 parking spots this week',
+        points: 50,
+        progress: 60,
+        current: 3,
+        total: 5,
+        timeLeft: '4d left',
+    },
+    {
+        title: 'Validation Master',
+        description: 'Validate 15 spots this week',
+        points: 40,
+        progress: 53.33,
+        current: 8,
+        total: 15,
+        timeLeft: '4d left',
+    },
+    {
+        title: 'Night Owl',
+        description: 'Report a spot after 10 PM',
+        points: 20,
+        progress: 0,
+        current: 0,
+        total: 1,
+        timeLeft: '2d left',
+    },
+];
 
 const AchievementCard = ({ achievement }: { achievement: typeof achievements[0] }) => {
     return (
@@ -84,6 +114,29 @@ const AchievementCard = ({ achievement }: { achievement: typeof achievements[0] 
     );
 };
 
+const ChallengeCard = ({ challenge }: { challenge: typeof challenges[0] }) => {
+    return (
+        <Card className="rounded-2xl bg-white shadow-sm overflow-hidden">
+            <CardContent className="p-4">
+                <div className="flex justify-between items-start">
+                    <div>
+                        <p className="font-bold text-base">{challenge.title}</p>
+                        <p className="text-sm text-muted-foreground mt-1">{challenge.description}</p>
+                    </div>
+                    <Badge variant="outline" className="bg-orange-100 text-orange-600 border-orange-200 font-semibold">{challenge.timeLeft}</Badge>
+                </div>
+
+                <div className="mt-3">
+                    <div className="flex justify-between items-center mb-2">
+                         <p className="text-green-600 font-semibold">{challenge.points} bonus points</p>
+                         <p className="text-sm font-semibold text-muted-foreground">{challenge.current}/{challenge.total}</p>
+                    </div>
+                    <Progress value={challenge.progress} className="h-2" />
+                </div>
+            </CardContent>
+        </Card>
+    )
+}
 
 export function LeaderboardClient() {
   return (
@@ -96,10 +149,10 @@ export function LeaderboardClient() {
 
       <main className="flex-1 overflow-y-auto pb-24">
         <div className="container mx-auto px-4 space-y-6">
-            <Tabs defaultValue="achievements">
+            <Tabs defaultValue="challenges">
                 <TabsList className="grid w-full grid-cols-2 bg-slate-200/75 rounded-full h-12 p-1">
                     <TabsTrigger value="achievements" className="rounded-full text-base font-semibold data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md">Achievements</TabsTrigger>
-                    <TabsTrigger value="challenges" className="rounded-full text-base font-semibold">Challenges</TabsTrigger>
+                    <TabsTrigger value="challenges" className="rounded-full text-base font-semibold data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md">Challenges</TabsTrigger>
                 </TabsList>
                 <TabsContent value="achievements" className="mt-6">
                     <Card className="rounded-2xl shadow-md">
@@ -131,8 +184,23 @@ export function LeaderboardClient() {
                         </div>
                     </div>
                 </TabsContent>
-                <TabsContent value="challenges">
-                   {/* Challenges content can be added here */}
+                <TabsContent value="challenges" className="mt-6">
+                   <Card className="rounded-2xl shadow-md bg-primary/10 border-primary/20">
+                       <CardContent className="p-5">
+                           <div className="flex items-center gap-3">
+                               <Zap className="h-6 w-6 text-primary"/>
+                               <div>
+                                   <h3 className="text-lg font-bold text-primary">Weekly Challenges</h3>
+                                   <p className="text-sm text-primary/80">Complete challenges to earn bonus points and exclusive badges!</p>
+                               </div>
+                           </div>
+                       </CardContent>
+                   </Card>
+                   <div className="mt-6 space-y-3">
+                       {challenges.map((challenge, index) => (
+                           <ChallengeCard key={index} challenge={challenge} />
+                       ))}
+                   </div>
                 </TabsContent>
             </Tabs>
         </div>
