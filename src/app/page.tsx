@@ -1,9 +1,9 @@
-import { ParkViewClient } from '@/components/ParkViewClient';
+import { CurbieClient } from '@/components/CurbieClient';
 
 export default function Home() {
   return (
     <main>
-      <ParkViewClient />
+      <CurbieClient />
     </main>
   );
 }

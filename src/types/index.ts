@@ -6,6 +6,7 @@ export interface ParkingSpot {
   distance: number; // in km
   rating: number; // out of 5
   isFavorite: boolean;
+  availableSince: string;
   position: {
     top: string;
     left: string;
