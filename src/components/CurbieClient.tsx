@@ -12,7 +12,7 @@ import { BottomNav } from '@/components/BottomNav';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
-import { Car, MapPin, CheckCircle } from 'lucide-react';
+import { Car, MapPin, CheckCircle, ParkingCircle } from 'lucide-react';
 
 const MOCK_SPOTS: ParkingSpot[] = [
   { id: 'spot1', name: 'Central Parkade', address: '123 Main St, Downtown', price: 3.50, distance: 0.5, rating: 4.5, isFavorite: false, availableSince: '1m ago', position: { top: '55%', left: '30%' } },
@@ -21,40 +21,71 @@ const MOCK_SPOTS: ParkingSpot[] = [
   { id: 'spot4', name: 'Mall Parking East', address: '101 Shopping Ctr, Eastwood', price: 5.00, distance: 4.1, rating: 4.8, isFavorite: false, availableSince: '12m ago', position: { top: '75%', left: '85%' } },
 ];
 
-const MapLocation = ({ position, availableSince, isAvailable }: { position: {top: string, left: string}, availableSince: string, isAvailable: boolean }) => (
+const MapLocation = ({ spot, isSelected, onClick, isAvailable }: { spot: ParkingSpot, isSelected: boolean, onClick: () => void, isAvailable: boolean }) => (
     <motion.div
       initial={{ scale: 0, opacity: 0 }}
       animate={{ scale: 1, opacity: 1 }}
       exit={{ scale: 0, opacity: 0 }}
       transition={{ type: "spring", stiffness: 260, damping: 20 }}
-      className="absolute flex flex-col items-center gap-1"
-      style={{ top: position.top, left: position.left, transform: 'translate(-50%, -50%)' }}
+      className="absolute flex flex-col items-center gap-1 cursor-pointer"
+      style={{ top: spot.position.top, left: spot.position.left, transform: 'translate(-50%, -50%)' }}
+      onClick={onClick}
     >
-        <div className={`rounded-full p-2 shadow-lg ${isAvailable ? 'bg-accent' : 'bg-orange-400'}`}>
+        <div className={`rounded-full p-2 shadow-lg transition-all ${isAvailable ? 'bg-accent' : 'bg-orange-400'} ${isSelected ? 'ring-4 ring-primary/50' : ''}`}>
             <Car className="h-5 w-5 text-white" />
         </div>
-        <div className="bg-card text-xs px-2 py-1 rounded-md shadow">
-            {availableSince}
-        </div>
+        <AnimatePresence>
+        {isSelected && (
+          <motion.div 
+            initial={{ y: -10, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            exit={{ y: -10, opacity: 0 }}
+            className="bg-card text-xs px-2 py-1 rounded-md shadow whitespace-nowrap"
+          >
+              {spot.name}
+          </motion.div>
+        )}
+        </AnimatePresence>
     </motion.div>
 );
 
 
 export function CurbieClient() {
   const [spots] = useState<ParkingSpot[]>(MOCK_SPOTS);
+  const [selectedSpotId, setSelectedSpotId] = useState<string | null>(spots[2].id);
+  const [isParking, setIsParking] = useState(false);
   const { toast } = useToast();
 
-  const handleLeave = () => {
-    toast({
-        title: (
-            <div className="flex items-center gap-2">
-                <CheckCircle className="h-5 w-5 text-green-500" />
-                <span className="font-semibold">Spot Reported</span>
-            </div>
-        ),
-        description: "Thanks for sharing your parking spot with the community!",
-    })
+  const handleToggleParkingState = () => {
+    setIsParking(prevState => {
+        if (!prevState) {
+             toast({
+                title: (
+                    <div className="flex items-center gap-2">
+                        <CheckCircle className="h-5 w-5 text-green-500" />
+                        <span className="font-semibold">Spot Reported</span>
+                    </div>
+                ),
+                description: "Thanks for sharing your parking spot with the community!",
+            })
+        } else {
+             toast({
+                title: (
+                    <div className="flex items-center gap-2">
+                        <ParkingCircle className="h-5 w-5 text-yellow-500" />
+                        <span className="font-semibold">You've Parked</span>
+                    </div>
+                ),
+                description: "Enjoy your time! We'll remember where you parked.",
+            })
+        }
+        return !prevState;
+    });
   };
+
+  const handleSpotClick = (spotId: string) => {
+    setSelectedSpotId(currentId => currentId === spotId ? null : spotId);
+  }
 
 
   return (
@@ -77,18 +108,28 @@ export function CurbieClient() {
                         </div>
 
                         {spots.map((spot, index) => (
-                           <MapLocation key={spot.id} position={spot.position} availableSince={spot.availableSince} isAvailable={index === 2}/>
+                           <MapLocation 
+                            key={spot.id} 
+                            spot={spot}
+                            isSelected={selectedSpotId === spot.id}
+                            onClick={() => handleSpotClick(spot.id)}
+                            isAvailable={index !== 2}
+                           />
                         ))}
                     </div>
                 </CardContent>
             </Card>
 
-            {/* I'm Leaving Button */}
-            <Button size="lg" className="w-full h-24 rounded-2xl bg-primary text-primary-foreground text-left flex items-center gap-4 shadow-lg hover:bg-primary/90" onClick={handleLeave}>
-                <Car className="h-8 w-8"/>
+            {/* I'm Leaving / I am Parking Button */}
+            <Button 
+                size="lg" 
+                className={`w-full h-24 rounded-2xl text-left flex items-center gap-4 shadow-lg transition-all duration-300 ${isParking ? 'bg-yellow-400 hover:bg-yellow-400/90 text-yellow-900' : 'bg-primary hover:bg-primary/90 text-primary-foreground'}`}
+                onClick={handleToggleParkingState}
+            >
+                {isParking ? <ParkingCircle className="h-8 w-8" /> : <Car className="h-8 w-8"/>}
                 <div>
-                    <p className="font-bold text-xl">I'm Leaving</p>
-                    <p className="font-normal opacity-90">Tap to report your parking spot as available</p>
+                    <p className="font-bold text-xl">{isParking ? "I am Parking" : "I'm Leaving"}</p>
+                    <p className="font-normal opacity-90">{isParking ? "Tap to let us know when you've left your spot" : "Tap to report your parking spot as available"}</p>
                 </div>
             </Button>
             
