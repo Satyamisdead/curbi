@@ -8,7 +8,7 @@ export interface ParkingSpot {
   isFavorite: boolean;
   availableSince: string;
   position: {
-    top: string;
-    left: string;
+    lat: number;
+    lng: number;
   };
 }
