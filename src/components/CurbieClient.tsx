@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Image from 'next/image';
 import { AnimatePresence, motion } from 'framer-motion';
 
@@ -54,33 +54,40 @@ export function CurbieClient() {
   const [spots] = useState<ParkingSpot[]>(MOCK_SPOTS);
   const [selectedSpotId, setSelectedSpotId] = useState<string | null>(spots[2].id);
   const [isParking, setIsParking] = useState(false);
+  const [showToast, setShowToast] = useState(false);
   const { toast } = useToast();
 
+  useEffect(() => {
+    if (!showToast) return;
+
+    if (isParking) {
+        toast({
+            title: (
+                <div className="flex items-center gap-2">
+                    <CheckCircle className="h-5 w-5 text-green-500" />
+                    <span className="font-semibold">Spot Reported</span>
+                </div>
+            ),
+            description: "Thanks for sharing your parking spot with the community!",
+        });
+    } else {
+        toast({
+            title: (
+                <div className="flex items-center gap-2">
+                    <ParkingCircle className="h-5 w-5 text-yellow-500" />
+                    <span className="font-semibold">You've Parked</span>
+                </div>
+            ),
+            description: "Enjoy your time! We'll remember where you parked.",
+        });
+    }
+    setShowToast(false);
+  }, [isParking, showToast, toast]);
+
+
   const handleToggleParkingState = () => {
-    setIsParking(prevState => {
-        if (!prevState) {
-             toast({
-                title: (
-                    <div className="flex items-center gap-2">
-                        <CheckCircle className="h-5 w-5 text-green-500" />
-                        <span className="font-semibold">Spot Reported</span>
-                    </div>
-                ),
-                description: "Thanks for sharing your parking spot with the community!",
-            })
-        } else {
-             toast({
-                title: (
-                    <div className="flex items-center gap-2">
-                        <ParkingCircle className="h-5 w-5 text-yellow-500" />
-                        <span className="font-semibold">You've Parked</span>
-                    </div>
-                ),
-                description: "Enjoy your time! We'll remember where you parked.",
-            })
-        }
-        return !prevState;
-    });
+    setIsParking(prevState => !prevState);
+    setShowToast(true);
   };
 
   const handleSpotClick = (spotId: string) => {
