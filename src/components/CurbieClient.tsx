@@ -75,33 +75,33 @@ export function CurbieClient() {
     googleMapsApiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || "",
     libraries: ['places'],
   });
+  
+  const handleSuccess = (position: GeolocationPosition) => {
+    setUserLocation({
+      lat: position.coords.latitude,
+      lng: position.coords.longitude,
+    });
+    setPermissionStatus('granted');
+    setShowPermissionModal(false);
+  };
+
+  const handleError = () => {
+    setPermissionStatus('denied');
+    setShowPermissionModal(true);
+  };
 
   const checkPermission = useCallback(async () => {
     if (!navigator.geolocation) {
-      setPermissionStatus('denied');
-      setShowPermissionModal(true);
+      handleError();
       return;
     }
-
     const status = await navigator.permissions.query({ name: 'geolocation' });
     setPermissionStatus(status.state);
-    
+
     if (status.state === 'granted') {
-        setShowPermissionModal(false);
-        navigator.geolocation.getCurrentPosition(
-            (position) => {
-                setUserLocation({
-                    lat: position.coords.latitude,
-                    lng: position.coords.longitude,
-                });
-            },
-            () => {
-                setPermissionStatus('denied');
-                setShowPermissionModal(true);
-            }
-        );
+      navigator.geolocation.getCurrentPosition(handleSuccess, handleError);
     } else {
-        setShowPermissionModal(true);
+      setShowPermissionModal(true);
     }
   }, []);
   
@@ -111,21 +111,7 @@ export function CurbieClient() {
 
   const handleAllowPermission = () => {
     if (navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition(
-        (position) => {
-            setUserLocation({
-                lat: position.coords.latitude,
-                lng: position.coords.longitude,
-            });
-            setPermissionStatus('granted');
-            setShowPermissionModal(false);
-        },
-        () => {
-            // User denied permission through the browser prompt
-            setPermissionStatus('denied');
-            setShowPermissionModal(true);
-        }
-      );
+      navigator.geolocation.getCurrentPosition(handleSuccess, handleError);
     }
   };
 
@@ -181,7 +167,7 @@ export function CurbieClient() {
         );
     }
     
-    if (permissionStatus === 'denied' && !userLocation) {
+    if (permissionStatus !== 'granted' || !userLocation) {
          return (
              <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 flex flex-col items-center gap-2 bg-background/80 p-4 rounded-lg text-center">
                 <p className="font-semibold text-sm">Location permission is required.</p>
@@ -229,7 +215,7 @@ export function CurbieClient() {
       <Header />
       <main className="flex-1 overflow-y-auto pb-24">
         <AnimatePresence>
-          {showPermissionModal && permissionStatus !== 'granted' && (
+          {showPermissionModal && (
             <LocationPermissionModal onAllow={handleAllowPermission} />
           )}
         </AnimatePresence>
