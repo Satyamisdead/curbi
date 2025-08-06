@@ -76,55 +76,61 @@ export function CurbieClient() {
     libraries: ['places'],
   });
 
-  const handlePermissionStateChange = useCallback((status: PermissionState) => {
-    setPermissionStatus(status);
-    if (status === 'granted') {
-      setShowPermissionModal(false);
-      navigator.geolocation.getCurrentPosition(
-        (position) => {
-          setUserLocation({
-            lat: position.coords.latitude,
-            lng: position.coords.longitude,
-          });
-        },
-        () => {
-          // This should be rare if status is granted, but handle it.
-          setPermissionStatus('denied');
-          setShowPermissionModal(true);
-        }
-      );
-    } else {
-      setShowPermissionModal(true);
-    }
-  }, []);
-
-  useEffect(() => {
-    if (navigator.geolocation) {
-      navigator.permissions.query({ name: 'geolocation' }).then((status) => {
-        handlePermissionStateChange(status.state);
-        status.onchange = () => handlePermissionStateChange(status.state);
-      });
-    } else {
+  const checkPermission = useCallback(async () => {
+    if (!navigator.geolocation) {
       setPermissionStatus('denied');
       setShowPermissionModal(true);
+      return;
     }
-  }, [handlePermissionStateChange]);
+
+    const status = await navigator.permissions.query({ name: 'geolocation' });
+    setPermissionStatus(status.state);
+    
+    if (status.state === 'granted') {
+        setShowPermissionModal(false);
+        navigator.geolocation.getCurrentPosition(
+            (position) => {
+                setUserLocation({
+                    lat: position.coords.latitude,
+                    lng: position.coords.longitude,
+                });
+            },
+            () => {
+                setPermissionStatus('denied');
+                setShowPermissionModal(true);
+            }
+        );
+    } else {
+        setShowPermissionModal(true);
+    }
+  }, []);
   
+  useEffect(() => {
+    checkPermission();
+  }, [checkPermission]);
+
   const handleAllowPermission = () => {
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
         (position) => {
-          // Success callback is handled by the 'onchange' event on the permission status
+            setUserLocation({
+                lat: position.coords.latitude,
+                lng: position.coords.longitude,
+            });
+            setPermissionStatus('granted');
+            setShowPermissionModal(false);
         },
         () => {
-          // Error callback is handled by the 'onchange' event on the permission status
+            // User denied permission through the browser prompt
+            setPermissionStatus('denied');
+            setShowPermissionModal(true);
         }
       );
     }
   };
 
   useEffect(() => {
-    if (!selectedSpot) return;
+    if (!selectedSpot || isParking === null) return;
 
     if (isParking) {
         toast({
@@ -175,7 +181,7 @@ export function CurbieClient() {
         );
     }
     
-    if (permissionStatus === 'denied') {
+    if (permissionStatus === 'denied' && !userLocation) {
          return (
              <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 flex flex-col items-center gap-2 bg-background/80 p-4 rounded-lg text-center">
                 <p className="font-semibold text-sm">Location permission is required.</p>
