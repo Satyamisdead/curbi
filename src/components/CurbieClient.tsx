@@ -68,7 +68,7 @@ export function CurbieClient() {
   const [isParking, setIsParking] = useState(false);
   const [showToast, setShowToast] = useState(false);
   const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
-  const [permissionGranted, setPermissionGranted] = useState(false);
+  const [showPermissionModal, setShowPermissionModal] = useState(false);
   const { toast } = useToast();
 
   const { isLoaded, loadError } = useJsApiLoader({
@@ -76,22 +76,34 @@ export function CurbieClient() {
     libraries: ['places'],
   });
 
+  const requestLocation = () => {
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        setUserLocation({
+          lat: position.coords.latitude,
+          lng: position.coords.longitude,
+        });
+      },
+      () => {
+        console.log("Location access denied.");
+      }
+    );
+  };
+  
   useEffect(() => {
-    if (permissionGranted) {
-      navigator.geolocation.getCurrentPosition(
-        (position) => {
-          setUserLocation({
-            lat: position.coords.latitude,
-            lng: position.coords.longitude,
-          });
-        },
-        () => {
-          // Handle error or denial after initial grant
-          console.log("Location access denied.");
-        }
-      );
+    // Check if we've asked for permission before
+    const permissionAsked = localStorage.getItem('curbie_location_permission_asked');
+    if (!permissionAsked) {
+      setShowPermissionModal(true);
+    } else {
+        // If we have asked before, try to get location silently
+        navigator.permissions.query({ name: 'geolocation' }).then((result) => {
+            if (result.state === 'granted') {
+                requestLocation();
+            }
+        });
     }
-  }, [permissionGranted]);
+  }, []);
 
   useEffect(() => {
     if (!showToast) return;
@@ -130,14 +142,19 @@ export function CurbieClient() {
     setSelectedSpotId(currentId => currentId === spotId ? null : spotId);
   }
 
+  const handlePermissionAction = () => {
+    setShowPermissionModal(false);
+    localStorage.setItem('curbie_location_permission_asked', 'true');
+    requestLocation();
+  };
 
   return (
     <div className="flex flex-col min-h-screen bg-background">
       <Header />
       <main className="flex-1 overflow-y-auto pb-24">
         <AnimatePresence>
-          {!permissionGranted && (
-            <LocationPermissionModal onPermissionGranted={() => setPermissionGranted(true)} />
+          {showPermissionModal && (
+            <LocationPermissionModal onPermissionAction={handlePermissionAction} />
           )}
         </AnimatePresence>
         <div className="container mx-auto px-4 py-6 space-y-6">
