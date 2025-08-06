@@ -83,10 +83,12 @@ export function CurbieClient() {
           lat: position.coords.latitude,
           lng: position.coords.longitude,
         });
-        localStorage.setItem('curbie_location_permission_granted', 'true');
       },
-      () => {
-        console.log("Location access denied.");
+      (error) => {
+        console.error("Location access denied.", error);
+        // If the user denies permission through the browser's native prompt,
+        // we should reflect that in our app's state.
+        localStorage.setItem('curbie_location_permission', 'denied');
       }
     );
   };
