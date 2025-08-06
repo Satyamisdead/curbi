@@ -64,7 +64,7 @@ const mapOptions = {
 
 export function CurbieClient() {
   const [spots] = useState<ParkingSpot[]>(MOCK_SPOTS);
-  const [selectedSpotId, setSelectedSpotId] = useState<string | null>(null);
+  const [selectedSpot, setSelectedSpot] = useState<ParkingSpot | null>(null);
   const [isParking, setIsParking] = useState(false);
   const [showToast, setShowToast] = useState(false);
   const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
@@ -83,6 +83,7 @@ export function CurbieClient() {
           lat: position.coords.latitude,
           lng: position.coords.longitude,
         });
+        localStorage.setItem('curbie_location_permission_granted', 'true');
       },
       () => {
         console.log("Location access denied.");
@@ -91,17 +92,11 @@ export function CurbieClient() {
   };
   
   useEffect(() => {
-    // Check if we've asked for permission before
-    const permissionGranted = localStorage.getItem('curbie_location_permission_granted');
-    if (!permissionGranted) {
+    const permissionStatus = localStorage.getItem('curbie_location_permission');
+    if (permissionStatus === null) {
       setShowPermissionModal(true);
-    } else {
-        // If we have asked before, try to get location silently
-        navigator.permissions.query({ name: 'geolocation' }).then((result) => {
-            if (result.state === 'granted') {
-                requestLocation();
-            }
-        });
+    } else if (permissionStatus === 'granted') {
+      requestLocation();
     }
   }, []);
 
@@ -126,11 +121,11 @@ export function CurbieClient() {
                     <span className="font-semibold">You've Parked</span>
                 </div>
             ),
-            description: "Enjoy your time! We'll remember where you parked.",
+            description: `Enjoy your time! We'll remember where you parked${selectedSpot ? ` at ${selectedSpot.name}` : ''}.`,
         });
     }
     setShowToast(false);
-  }, [isParking, showToast, toast]);
+  }, [isParking, showToast, toast, selectedSpot]);
 
 
   const handleToggleParkingState = () => {
@@ -138,18 +133,19 @@ export function CurbieClient() {
     setShowToast(true);
   };
 
-  const handleSpotClick = (spotId: string) => {
-    setSelectedSpotId(currentId => currentId === spotId ? null : spotId);
+  const handleSpotClick = (spot: ParkingSpot) => {
+    setSelectedSpot(currentSpot => currentSpot?.id === spot.id ? null : spot);
   }
   
   const handleAllowPermission = () => {
     setShowPermissionModal(false);
-    localStorage.setItem('curbie_location_permission_granted', 'true');
+    localStorage.setItem('curbie_location_permission', 'granted');
     requestLocation();
   };
   
   const handleDenyPermission = () => {
     setShowPermissionModal(false);
+    localStorage.setItem('curbie_location_permission', 'denied');
   };
 
   return (
@@ -168,7 +164,8 @@ export function CurbieClient() {
                     <h2 className="text-xl font-bold">Interactive Map View</h2>
                     <p className="text-muted-foreground">Real-time parking spots with GPS navigation</p>
                     <div className="relative mt-4 h-64 rounded-xl bg-slate-200/50">
-                        {isLoaded && userLocation ? (
+                        {isLoaded ? (
+                          userLocation ? (
                             <GoogleMap
                                 mapContainerStyle={mapContainerStyle}
                                 center={userLocation}
@@ -180,10 +177,10 @@ export function CurbieClient() {
                                     <Marker 
                                         key={spot.id} 
                                         position={spot.position}
-                                        onClick={() => handleSpotClick(spot.id)}
+                                        onClick={() => handleSpotClick(spot)}
                                         icon={{
                                             path: 'M-10,0a10,10 0 1,0 20,0a10,10 0 1,0 -20,0',
-                                            fillColor: selectedSpotId === spot.id ? '#1AC9C9' : '#28D828',
+                                            fillColor: selectedSpot?.id === spot.id ? '#1AC9C9' : '#28D828',
                                             fillOpacity: 1,
                                             strokeWeight: 0,
                                             scale: 1,
@@ -191,19 +188,18 @@ export function CurbieClient() {
                                     />
                                 ))}
                             </GoogleMap>
+                          ) : (
+                            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 flex items-center gap-2 bg-background/80 p-2 rounded-lg">
+                                <p className="font-semibold text-sm">Waiting for location permission...</p>
+                           </div>
+                          )
+                        ) : loadError ? (
+                             <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 flex items-center gap-2 bg-destructive/80 p-2 rounded-lg">
+                                 <p className="font-semibold text-sm text-destructive-foreground">Error loading maps. Please check API key.</p>
+                            </div>
                         ) : (
                              <div className="flex items-center justify-center h-full">
-                                <MapPin className="h-16 w-16 text-slate-400/50" />
-                            </div>
-                        )}
-                         {!userLocation && isLoaded && (
-                             <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 flex items-center gap-2 bg-background/80 p-2 rounded-lg">
-                                 <p className="font-semibold text-sm">Waiting for location permission...</p>
-                            </div>
-                        )}
-                        {loadError && (
-                             <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 flex items-center gap-2 bg-destructive/80 p-2 rounded-lg">
-                                 <p className="font-semibold text-sm text-destructive-foreground">Error loading maps.</p>
+                                <p>Loading map...</p>
                             </div>
                         )}
                     </div>
