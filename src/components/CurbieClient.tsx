@@ -92,8 +92,8 @@ export function CurbieClient() {
   
   useEffect(() => {
     // Check if we've asked for permission before
-    const permissionAsked = localStorage.getItem('curbie_location_permission_asked');
-    if (!permissionAsked) {
+    const permissionGranted = localStorage.getItem('curbie_location_permission_granted');
+    if (!permissionGranted) {
       setShowPermissionModal(true);
     } else {
         // If we have asked before, try to get location silently
@@ -141,11 +141,15 @@ export function CurbieClient() {
   const handleSpotClick = (spotId: string) => {
     setSelectedSpotId(currentId => currentId === spotId ? null : spotId);
   }
-
-  const handlePermissionAction = () => {
+  
+  const handleAllowPermission = () => {
     setShowPermissionModal(false);
-    localStorage.setItem('curbie_location_permission_asked', 'true');
+    localStorage.setItem('curbie_location_permission_granted', 'true');
     requestLocation();
+  };
+  
+  const handleDenyPermission = () => {
+    setShowPermissionModal(false);
   };
 
   return (
@@ -154,7 +158,7 @@ export function CurbieClient() {
       <main className="flex-1 overflow-y-auto pb-24">
         <AnimatePresence>
           {showPermissionModal && (
-            <LocationPermissionModal onPermissionAction={handlePermissionAction} />
+            <LocationPermissionModal onAllow={handleAllowPermission} onDeny={handleDenyPermission} />
           )}
         </AnimatePresence>
         <div className="container mx-auto px-4 py-6 space-y-6">

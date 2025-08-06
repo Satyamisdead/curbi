@@ -5,10 +5,11 @@ import { MapPin } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 interface LocationPermissionModalProps {
-  onPermissionAction: () => void;
+  onAllow: () => void;
+  onDeny: () => void;
 }
 
-export function LocationPermissionModal({ onPermissionAction }: LocationPermissionModalProps) {
+export function LocationPermissionModal({ onAllow, onDeny }: LocationPermissionModalProps) {
 
   return (
     <motion.div
@@ -30,10 +31,10 @@ export function LocationPermissionModal({ onPermissionAction }: LocationPermissi
           To help you find the best parking spots, we need to know your current location.
         </p>
         <div className="space-y-3">
-          <Button size="lg" className="w-full h-14 text-lg font-bold rounded-2xl" onClick={onPermissionAction}>
+          <Button size="lg" className="w-full h-14 text-lg font-bold rounded-2xl" onClick={onAllow}>
             Allow Location Access
           </Button>
-          <Button size="lg" variant="ghost" className="w-full h-12 text-base font-bold rounded-2xl" onClick={onPermissionAction}>
+          <Button size="lg" variant="ghost" className="w-full h-12 text-base font-bold rounded-2xl" onClick={onDeny}>
             Maybe Later
           </Button>
         </div>
