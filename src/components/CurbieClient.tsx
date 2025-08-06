@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { AnimatePresence, motion } from 'framer-motion';
+import { AnimatePresence } from 'framer-motion';
 import { GoogleMap, useJsApiLoader, Marker } from '@react-google-maps/api';
 
 import type { ParkingSpot } from '@/types';
@@ -13,7 +13,7 @@ import { LocationPermissionModal } from '@/components/LocationPermissionModal';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
-import { Car, CheckCircle, ParkingCircle, MapPin } from 'lucide-react';
+import { Car, CheckCircle, ParkingCircle } from 'lucide-react';
 
 const MOCK_SPOTS: ParkingSpot[] = [
   { id: 'spot1', name: 'Central Parkade', address: '123 Main St, Downtown', price: 3.50, distance: 0.5, rating: 4.5, isFavorite: false, availableSince: '1m ago', position: { lat: 37.7749, lng: -122.4194 } },
@@ -68,7 +68,7 @@ export function CurbieClient() {
   const [isParking, setIsParking] = useState(false);
   const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
   const [showPermissionModal, setShowPermissionModal] = useState(false);
-  const [permissionStatus, setPermissionStatus] = useState<PermissionState | 'prompt' | 'pending'>('pending');
+  const [permissionStatus, setPermissionStatus] = useState<PermissionState | 'pending'>('pending');
   const { toast } = useToast();
 
   const { isLoaded, loadError } = useJsApiLoader({
@@ -76,38 +76,52 @@ export function CurbieClient() {
     libraries: ['places'],
   });
 
-  const checkPermission = useCallback(async () => {
-    if (navigator.geolocation) {
-      const status = await navigator.permissions.query({ name: 'geolocation' });
-      setPermissionStatus(status.state);
-      if (status.state === 'granted') {
-        navigator.geolocation.getCurrentPosition(
-            (position) => {
-                setUserLocation({
-                    lat: position.coords.latitude,
-                    lng: position.coords.longitude,
-                });
-                setShowPermissionModal(false);
-            },
-            () => {
-              // This error callback is for when location is denied after being granted (e.g., system-level change)
-              setPermissionStatus('denied');
-              setShowPermissionModal(true);
-            }
-        );
-      } else {
-        setShowPermissionModal(true);
-      }
+  const handlePermissionStateChange = useCallback((status: PermissionState) => {
+    setPermissionStatus(status);
+    if (status === 'granted') {
+      setShowPermissionModal(false);
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          setUserLocation({
+            lat: position.coords.latitude,
+            lng: position.coords.longitude,
+          });
+        },
+        () => {
+          // This should be rare if status is granted, but handle it.
+          setPermissionStatus('denied');
+          setShowPermissionModal(true);
+        }
+      );
     } else {
-      // Geolocation not supported
-      setPermissionStatus('denied');
+      setShowPermissionModal(true);
     }
   }, []);
 
   useEffect(() => {
-    checkPermission();
-  }, [checkPermission]);
-
+    if (navigator.geolocation) {
+      navigator.permissions.query({ name: 'geolocation' }).then((status) => {
+        handlePermissionStateChange(status.state);
+        status.onchange = () => handlePermissionStateChange(status.state);
+      });
+    } else {
+      setPermissionStatus('denied');
+      setShowPermissionModal(true);
+    }
+  }, [handlePermissionStateChange]);
+  
+  const handleAllowPermission = () => {
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          // Success callback is handled by the 'onchange' event on the permission status
+        },
+        () => {
+          // Error callback is handled by the 'onchange' event on the permission status
+        }
+      );
+    }
+  };
 
   useEffect(() => {
     if (!selectedSpot) return;
@@ -143,26 +157,6 @@ export function CurbieClient() {
   const handleSpotClick = (spot: ParkingSpot) => {
     setSelectedSpot(currentSpot => currentSpot?.id === spot.id ? null : spot);
   }
-  
-  const handleAllowPermission = () => {
-    setPermissionStatus('pending'); // Show loading/waiting state
-    if (navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition(
-        (position) => {
-          setUserLocation({
-            lat: position.coords.latitude,
-            lng: position.coords.longitude,
-          });
-          setPermissionStatus('granted');
-          setShowPermissionModal(false);
-        },
-        () => {
-          setPermissionStatus('denied');
-          // Modal will remain open because of the permissionStatus state
-        }
-      );
-    }
-  };
   
   const renderMapContent = () => {
     if (loadError) {
