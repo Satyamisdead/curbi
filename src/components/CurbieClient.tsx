@@ -68,7 +68,7 @@ export function CurbieClient() {
   const [isParking, setIsParking] = useState(false);
   const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
   const [showPermissionModal, setShowPermissionModal] = useState(false);
-  const [permissionStatus, setPermissionStatus] = useState<string | null>(null);
+  const [permissionStatus, setPermissionStatus] = useState<PermissionState | 'prompt' | 'pending'>('pending');
   const { toast } = useToast();
 
   const { isLoaded, loadError } = useJsApiLoader({
@@ -76,39 +76,42 @@ export function CurbieClient() {
     libraries: ['places'],
   });
 
-  const requestLocation = useCallback(() => {
+  const checkPermission = useCallback(async () => {
     if (navigator.geolocation) {
+      const status = await navigator.permissions.query({ name: 'geolocation' });
+      setPermissionStatus(status.state);
+      if (status.state === 'granted') {
         navigator.geolocation.getCurrentPosition(
             (position) => {
                 setUserLocation({
                     lat: position.coords.latitude,
                     lng: position.coords.longitude,
                 });
-                localStorage.setItem('curbie_location_permission', 'granted');
-                setPermissionStatus('granted');
                 setShowPermissionModal(false);
             },
             () => {
-                localStorage.setItem('curbie_location_permission', 'denied');
-                setPermissionStatus('denied');
-                setShowPermissionModal(true); // Keep modal open if denied via browser
+              // This error callback is for when location is denied after being granted (e.g., system-level change)
+              setPermissionStatus('denied');
+              setShowPermissionModal(true);
             }
         );
+      } else {
+        setShowPermissionModal(true);
+      }
+    } else {
+      // Geolocation not supported
+      setPermissionStatus('denied');
     }
   }, []);
-  
-  useEffect(() => {
-    const storedPermission = localStorage.getItem('curbie_location_permission');
-    setPermissionStatus(storedPermission);
-
-    if (storedPermission === 'granted') {
-      requestLocation();
-    } else {
-      setShowPermissionModal(true);
-    }
-  }, [requestLocation]);
 
   useEffect(() => {
+    checkPermission();
+  }, [checkPermission]);
+
+
+  useEffect(() => {
+    if (!selectedSpot) return;
+
     if (isParking) {
         toast({
             title: (
@@ -117,7 +120,7 @@ export function CurbieClient() {
                     <span className="font-semibold">You've Parked</span>
                 </div>
             ),
-            description: `Enjoy your time! We'll remember where you parked${selectedSpot ? ` at ${selectedSpot.name}` : ''}.`,
+            description: `Enjoy your time! We'll remember where you parked at ${selectedSpot.name}.`,
         });
     } else {
         toast({
@@ -142,7 +145,23 @@ export function CurbieClient() {
   }
   
   const handleAllowPermission = () => {
-    requestLocation();
+    setPermissionStatus('pending'); // Show loading/waiting state
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          setUserLocation({
+            lat: position.coords.latitude,
+            lng: position.coords.longitude,
+          });
+          setPermissionStatus('granted');
+          setShowPermissionModal(false);
+        },
+        () => {
+          setPermissionStatus('denied');
+          // Modal will remain open because of the permissionStatus state
+        }
+      );
+    }
   };
   
   const renderMapContent = () => {
@@ -154,12 +173,21 @@ export function CurbieClient() {
         );
     }
 
-    if (!isLoaded) {
+    if (!isLoaded || permissionStatus === 'pending') {
         return (
             <div className="flex items-center justify-center h-full">
                 <p>Loading map...</p>
             </div>
         );
+    }
+    
+    if (permissionStatus === 'denied') {
+         return (
+             <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 flex flex-col items-center gap-2 bg-background/80 p-4 rounded-lg text-center">
+                <p className="font-semibold text-sm">Location permission is required.</p>
+                <p className="text-xs text-muted-foreground">To use the map, please enable location access in your browser settings and refresh the page.</p>
+            </div>
+         );
     }
 
     if (userLocation) {
@@ -187,15 +215,6 @@ export function CurbieClient() {
                 ))}
             </GoogleMap>
         );
-    }
-    
-    if (permissionStatus === 'denied') {
-         return (
-             <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 flex flex-col items-center gap-2 bg-background/80 p-4 rounded-lg text-center">
-                <p className="font-semibold text-sm">Location permission is required.</p>
-                <p className="text-xs text-muted-foreground">To use the map, please enable location access in your browser settings and refresh the page.</p>
-            </div>
-         );
     }
 
     return (
