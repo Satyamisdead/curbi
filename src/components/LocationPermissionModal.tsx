@@ -6,10 +6,9 @@ import { Button } from '@/components/ui/button';
 
 interface LocationPermissionModalProps {
   onAllow: () => void;
-  onDeny: () => void;
 }
 
-export function LocationPermissionModal({ onAllow, onDeny }: LocationPermissionModalProps) {
+export function LocationPermissionModal({ onAllow }: LocationPermissionModalProps) {
 
   return (
     <motion.div
@@ -17,7 +16,6 @@ export function LocationPermissionModal({ onAllow, onDeny }: LocationPermissionM
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm"
-      onClick={onDeny}
     >
       <motion.div
         initial={{ scale: 0.9, y: 20 }}
@@ -30,14 +28,11 @@ export function LocationPermissionModal({ onAllow, onDeny }: LocationPermissionM
         </div>
         <h2 className="text-2xl font-bold mb-2">Enable Location Services</h2>
         <p className="text-muted-foreground mb-8">
-          To help you find the best parking spots, we need to know your current location.
+          To help you find the best parking spots, location access is required.
         </p>
         <div className="space-y-3">
           <Button size="lg" className="w-full h-14 text-lg font-bold rounded-2xl" onClick={onAllow}>
             Allow Location Access
-          </Button>
-          <Button size="lg" variant="ghost" className="w-full h-12 text-base font-bold rounded-2xl" onClick={onDeny}>
-            Maybe Later
           </Button>
         </div>
       </motion.div>

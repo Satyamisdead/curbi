@@ -92,7 +92,7 @@ export function CurbieClient() {
                 console.error("Location access denied.", error);
                 localStorage.setItem('curbie_location_permission', 'denied');
                 setPermissionStatus('denied');
-                setShowPermissionModal(false);
+                setShowPermissionModal(true); // Keep modal open if denied via browser
             }
         );
     }
@@ -104,7 +104,7 @@ export function CurbieClient() {
 
     if (storedPermission === 'granted') {
       requestLocation();
-    } else if (storedPermission !== 'denied') {
+    } else {
       setShowPermissionModal(true);
     }
   }, [requestLocation]);
@@ -143,16 +143,9 @@ export function CurbieClient() {
   }
   
   const handleAllowPermission = () => {
-    setShowPermissionModal(false);
     requestLocation();
   };
   
-  const handleDenyPermission = () => {
-    setShowPermissionModal(false);
-    localStorage.setItem('curbie_location_permission', 'denied');
-    setPermissionStatus('denied');
-  };
-
   const renderMapContent = () => {
     if (loadError) {
         return (
@@ -200,8 +193,8 @@ export function CurbieClient() {
     if (permissionStatus === 'denied') {
          return (
              <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 flex flex-col items-center gap-2 bg-background/80 p-4 rounded-lg text-center">
-                <p className="font-semibold text-sm">Location permission denied.</p>
-                <p className="text-xs text-muted-foreground">To use the map, please enable location access in your browser settings.</p>
+                <p className="font-semibold text-sm">Location permission is required.</p>
+                <p className="text-xs text-muted-foreground">To use the map, please enable location access in your browser settings and refresh the page.</p>
             </div>
          );
     }
@@ -219,7 +212,7 @@ export function CurbieClient() {
       <main className="flex-1 overflow-y-auto pb-24">
         <AnimatePresence>
           {showPermissionModal && (
-            <LocationPermissionModal onAllow={handleAllowPermission} onDeny={handleDenyPermission} />
+            <LocationPermissionModal onAllow={handleAllowPermission} />
           )}
         </AnimatePresence>
         <div className="container mx-auto px-4 py-6 space-y-6">
