@@ -88,8 +88,7 @@ export function CurbieClient() {
                 setPermissionStatus('granted');
                 setShowPermissionModal(false);
             },
-            (error) => {
-                console.error("Location access denied.", error);
+            () => {
                 localStorage.setItem('curbie_location_permission', 'denied');
                 setPermissionStatus('denied');
                 setShowPermissionModal(true); // Keep modal open if denied via browser
@@ -114,21 +113,21 @@ export function CurbieClient() {
         toast({
             title: (
                 <div className="flex items-center gap-2">
-                    <CheckCircle className="h-5 w-5 text-green-500" />
-                    <span className="font-semibold">Spot Reported</span>
-                </div>
-            ),
-            description: "Thanks for sharing your parking spot with the community!",
-        });
-    } else {
-        toast({
-            title: (
-                <div className="flex items-center gap-2">
                     <ParkingCircle className="h-5 w-5 text-yellow-500" />
                     <span className="font-semibold">You've Parked</span>
                 </div>
             ),
             description: `Enjoy your time! We'll remember where you parked${selectedSpot ? ` at ${selectedSpot.name}` : ''}.`,
+        });
+    } else {
+        toast({
+            title: (
+                <div className="flex items-center gap-2">
+                    <CheckCircle className="h-5 w-5 text-green-500" />
+                    <span className="font-semibold">Spot Reported</span>
+                </div>
+            ),
+            description: "Thanks for sharing your parking spot with the community!",
         });
     }
   }, [isParking, toast, selectedSpot]);
@@ -211,7 +210,7 @@ export function CurbieClient() {
       <Header />
       <main className="flex-1 overflow-y-auto pb-24">
         <AnimatePresence>
-          {showPermissionModal && (
+          {showPermissionModal && permissionStatus !== 'granted' && (
             <LocationPermissionModal onAllow={handleAllowPermission} />
           )}
         </AnimatePresence>
@@ -229,13 +228,13 @@ export function CurbieClient() {
 
             <Button 
                 size="lg" 
-                className={`w-full h-24 rounded-2xl text-left flex items-center gap-4 shadow-lg transition-all duration-300 ${isParking ? 'bg-yellow-400 hover:bg-yellow-400/90 text-yellow-900' : 'bg-primary hover:bg-primary/90 text-primary-foreground'}`}
+                className={`w-full h-24 rounded-2xl text-left flex items-center gap-4 shadow-lg transition-all duration-300 ${isParking ? 'bg-primary hover:bg-primary/90 text-primary-foreground' : 'bg-yellow-400 hover:bg-yellow-400/90 text-yellow-900'}`}
                 onClick={handleToggleParkingState}
             >
-                {isParking ? <ParkingCircle className="h-8 w-8" /> : <Car className="h-8 w-8"/>}
+                {isParking ? <Car className="h-8 w-8"/> : <ParkingCircle className="h-8 w-8" />}
                 <div>
-                    <p className="font-bold text-xl">{isParking ? "I am Parking" : "I'm Leaving"}</p>
-                    <p className="font-normal opacity-90">{isParking ? "Tap to let us know when you've left your spot" : "Tap to report your parking spot as available"}</p>
+                    <p className="font-bold text-xl">{isParking ? "I'm Leaving" : "I am Parking"}</p>
+                    <p className="font-normal opacity-90">{isParking ? "Tap to report your parking spot as available" : "Tap to let us know when you've left your spot"}</p>
                 </div>
             </Button>
             
