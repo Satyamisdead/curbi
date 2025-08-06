@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { GoogleMap, useJsApiLoader, Marker } from '@react-google-maps/api';
 
@@ -66,9 +66,9 @@ export function CurbieClient() {
   const [spots] = useState<ParkingSpot[]>(MOCK_SPOTS);
   const [selectedSpot, setSelectedSpot] = useState<ParkingSpot | null>(null);
   const [isParking, setIsParking] = useState(false);
-  const [showToast, setShowToast] = useState(false);
   const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
   const [showPermissionModal, setShowPermissionModal] = useState(false);
+  const [permissionStatus, setPermissionStatus] = useState<string | null>(null);
   const { toast } = useToast();
 
   const { isLoaded, loadError } = useJsApiLoader({
@@ -76,35 +76,40 @@ export function CurbieClient() {
     libraries: ['places'],
   });
 
-  const requestLocation = () => {
-    navigator.geolocation.getCurrentPosition(
-      (position) => {
-        setUserLocation({
-          lat: position.coords.latitude,
-          lng: position.coords.longitude,
-        });
-      },
-      (error) => {
-        console.error("Location access denied.", error);
-        // If the user denies permission through the browser's native prompt,
-        // we should reflect that in our app's state.
-        localStorage.setItem('curbie_location_permission', 'denied');
-      }
-    );
-  };
-  
-  useEffect(() => {
-    const permissionStatus = localStorage.getItem('curbie_location_permission');
-    if (permissionStatus === null) {
-      setShowPermissionModal(true);
-    } else if (permissionStatus === 'granted') {
-      requestLocation();
+  const requestLocation = useCallback(() => {
+    if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(
+            (position) => {
+                setUserLocation({
+                    lat: position.coords.latitude,
+                    lng: position.coords.longitude,
+                });
+                localStorage.setItem('curbie_location_permission', 'granted');
+                setPermissionStatus('granted');
+                setShowPermissionModal(false);
+            },
+            (error) => {
+                console.error("Location access denied.", error);
+                localStorage.setItem('curbie_location_permission', 'denied');
+                setPermissionStatus('denied');
+                setShowPermissionModal(false);
+            }
+        );
     }
   }, []);
+  
+  useEffect(() => {
+    const storedPermission = localStorage.getItem('curbie_location_permission');
+    setPermissionStatus(storedPermission);
+
+    if (storedPermission === 'granted') {
+      requestLocation();
+    } else if (storedPermission !== 'denied') {
+      setShowPermissionModal(true);
+    }
+  }, [requestLocation]);
 
   useEffect(() => {
-    if (!showToast) return;
-
     if (isParking) {
         toast({
             title: (
@@ -126,13 +131,11 @@ export function CurbieClient() {
             description: `Enjoy your time! We'll remember where you parked${selectedSpot ? ` at ${selectedSpot.name}` : ''}.`,
         });
     }
-    setShowToast(false);
-  }, [isParking, showToast, toast, selectedSpot]);
+  }, [isParking, toast, selectedSpot]);
 
 
   const handleToggleParkingState = () => {
     setIsParking(prevState => !prevState);
-    setShowToast(true);
   };
 
   const handleSpotClick = (spot: ParkingSpot) => {
@@ -141,14 +144,74 @@ export function CurbieClient() {
   
   const handleAllowPermission = () => {
     setShowPermissionModal(false);
-    localStorage.setItem('curbie_location_permission', 'granted');
     requestLocation();
   };
   
   const handleDenyPermission = () => {
     setShowPermissionModal(false);
     localStorage.setItem('curbie_location_permission', 'denied');
+    setPermissionStatus('denied');
   };
+
+  const renderMapContent = () => {
+    if (loadError) {
+        return (
+            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 flex items-center gap-2 bg-destructive/80 p-2 rounded-lg">
+                <p className="font-semibold text-sm text-destructive-foreground">Error loading maps. Please check API key.</p>
+            </div>
+        );
+    }
+
+    if (!isLoaded) {
+        return (
+            <div className="flex items-center justify-center h-full">
+                <p>Loading map...</p>
+            </div>
+        );
+    }
+
+    if (userLocation) {
+        return (
+            <GoogleMap
+                mapContainerStyle={mapContainerStyle}
+                center={userLocation}
+                zoom={15}
+                options={mapOptions}
+            >
+                <Marker position={userLocation} />
+                {spots.map(spot => (
+                    <Marker 
+                        key={spot.id} 
+                        position={spot.position}
+                        onClick={() => handleSpotClick(spot)}
+                        icon={{
+                            path: 'M-10,0a10,10 0 1,0 20,0a10,10 0 1,0 -20,0',
+                            fillColor: selectedSpot?.id === spot.id ? '#1AC9C9' : '#28D828',
+                            fillOpacity: 1,
+                            strokeWeight: 0,
+                            scale: 1,
+                        }}
+                    />
+                ))}
+            </GoogleMap>
+        );
+    }
+    
+    if (permissionStatus === 'denied') {
+         return (
+             <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 flex flex-col items-center gap-2 bg-background/80 p-4 rounded-lg text-center">
+                <p className="font-semibold text-sm">Location permission denied.</p>
+                <p className="text-xs text-muted-foreground">To use the map, please enable location access in your browser settings.</p>
+            </div>
+         );
+    }
+
+    return (
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 flex items-center gap-2 bg-background/80 p-2 rounded-lg">
+            <p className="font-semibold text-sm">Waiting for location permission...</p>
+       </div>
+    );
+  }
 
   return (
     <div className="flex flex-col min-h-screen bg-background">
@@ -166,44 +229,7 @@ export function CurbieClient() {
                     <h2 className="text-xl font-bold">Interactive Map View</h2>
                     <p className="text-muted-foreground">Real-time parking spots with GPS navigation</p>
                     <div className="relative mt-4 h-64 rounded-xl bg-slate-200/50">
-                        {isLoaded ? (
-                          userLocation ? (
-                            <GoogleMap
-                                mapContainerStyle={mapContainerStyle}
-                                center={userLocation}
-                                zoom={15}
-                                options={mapOptions}
-                            >
-                                <Marker position={userLocation} />
-                                {spots.map(spot => (
-                                    <Marker 
-                                        key={spot.id} 
-                                        position={spot.position}
-                                        onClick={() => handleSpotClick(spot)}
-                                        icon={{
-                                            path: 'M-10,0a10,10 0 1,0 20,0a10,10 0 1,0 -20,0',
-                                            fillColor: selectedSpot?.id === spot.id ? '#1AC9C9' : '#28D828',
-                                            fillOpacity: 1,
-                                            strokeWeight: 0,
-                                            scale: 1,
-                                        }}
-                                    />
-                                ))}
-                            </GoogleMap>
-                          ) : (
-                            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 flex items-center gap-2 bg-background/80 p-2 rounded-lg">
-                                <p className="font-semibold text-sm">Waiting for location permission...</p>
-                           </div>
-                          )
-                        ) : loadError ? (
-                             <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 flex items-center gap-2 bg-destructive/80 p-2 rounded-lg">
-                                 <p className="font-semibold text-sm text-destructive-foreground">Error loading maps. Please check API key.</p>
-                            </div>
-                        ) : (
-                             <div className="flex items-center justify-center h-full">
-                                <p>Loading map...</p>
-                            </div>
-                        )}
+                        {renderMapContent()}
                     </div>
                 </CardContent>
             </Card>
