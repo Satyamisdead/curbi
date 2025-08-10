@@ -1,3 +1,4 @@
+
 "use client";
 
 import { motion } from 'framer-motion';
@@ -6,9 +7,10 @@ import { Button } from '@/components/ui/button';
 
 interface LocationPermissionModalProps {
   onAllow: () => void;
+  onLater: () => void;
 }
 
-export function LocationPermissionModal({ onAllow }: LocationPermissionModalProps) {
+export function LocationPermissionModal({ onAllow, onLater }: LocationPermissionModalProps) {
 
   return (
     <motion.div
@@ -33,6 +35,9 @@ export function LocationPermissionModal({ onAllow }: LocationPermissionModalProp
         <div className="space-y-3">
           <Button size="lg" className="w-full h-14 text-lg font-bold rounded-2xl" onClick={onAllow}>
             Allow Location Access
+          </Button>
+          <Button size="lg" variant="ghost" className="w-full h-14 text-lg rounded-2xl" onClick={onLater}>
+            Maybe Later
           </Button>
         </div>
       </motion.div>

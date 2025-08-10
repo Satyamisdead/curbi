@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useState, useEffect, useCallback } from 'react';
@@ -76,43 +77,61 @@ export function CurbieClient() {
     libraries: ['places'],
   });
   
-  const handleSuccess = (position: GeolocationPosition) => {
+  const handleSuccess = useCallback((position: GeolocationPosition) => {
     setUserLocation({
       lat: position.coords.latitude,
       lng: position.coords.longitude,
     });
     setPermissionStatus('granted');
     setShowPermissionModal(false);
-  };
+    localStorage.setItem('curbie_location_permission', 'granted');
+  }, []);
 
-  const handleError = () => {
+  const handleError = useCallback(() => {
     setPermissionStatus('denied');
     setShowPermissionModal(true);
-  };
+    localStorage.setItem('curbie_location_permission', 'denied');
+  }, []);
 
   const checkPermission = useCallback(async () => {
-    if (!navigator.geolocation) {
-      handleError();
-      return;
-    }
-    const status = await navigator.permissions.query({ name: 'geolocation' });
-    setPermissionStatus(status.state);
-
-    if (status.state === 'granted') {
-      navigator.geolocation.getCurrentPosition(handleSuccess, handleError);
+    const storedPermission = localStorage.getItem('curbie_location_permission');
+    if (storedPermission === 'granted') {
+       if (navigator.geolocation) {
+         navigator.geolocation.getCurrentPosition(handleSuccess, handleError);
+       }
+    } else if (storedPermission !== 'dismissed') {
+        if (navigator.permissions) {
+            const status = await navigator.permissions.query({ name: 'geolocation' });
+            setPermissionStatus(status.state);
+            if (status.state === 'granted') {
+                navigator.geolocation.getCurrentPosition(handleSuccess, handleError);
+            } else {
+                setShowPermissionModal(true);
+            }
+        } else if (navigator.geolocation) { // Fallback for browsers without Permissions API
+            navigator.geolocation.getCurrentPosition(handleSuccess, () => {
+                setPermissionStatus('pending');
+                setShowPermissionModal(true);
+            });
+        }
     } else {
-      setShowPermissionModal(true);
+        setPermissionStatus('denied');
     }
-  }, []);
+  }, [handleSuccess, handleError]);
   
   useEffect(() => {
     checkPermission();
   }, [checkPermission]);
-
-  const handleAllowPermission = () => {
+  
+  const handleAllowPermission = useCallback(() => {
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(handleSuccess, handleError);
     }
+  }, [handleSuccess, handleError]);
+
+  const handleDismissPermission = () => {
+    setShowPermissionModal(false);
+    localStorage.setItem('curbie_location_permission', 'dismissed');
   };
 
   useEffect(() => {
@@ -159,7 +178,7 @@ export function CurbieClient() {
         );
     }
 
-    if (!isLoaded || permissionStatus === 'pending') {
+    if (!isLoaded || permissionStatus === 'pending' && showPermissionModal) {
         return (
             <div className="flex items-center justify-center h-full">
                 <p>Loading map...</p>
@@ -216,7 +235,7 @@ export function CurbieClient() {
       <main className="flex-1 overflow-y-auto pb-24">
         <AnimatePresence>
           {showPermissionModal && (
-            <LocationPermissionModal onAllow={handleAllowPermission} />
+            <LocationPermissionModal onAllow={handleAllowPermission} onLater={handleDismissPermission} />
           )}
         </AnimatePresence>
         <div className="container mx-auto px-4 py-6 space-y-6">
