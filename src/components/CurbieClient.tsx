@@ -42,7 +42,7 @@ export function CurbieClient() {
   const [parkedLocation, setParkedLocation] = useState<{ lat: number; lng: number } | null>(null);
   const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
   const [showPermissionModal, setShowPermissionModal] = useState(false);
-  const [permissionStatus, setPermissionStatus] = useState<PermissionState | 'pending'>('pending');
+  const [permissionStatus, setPermissionStatus] = useState<PermissionState | 'pending' | 'dismissed'>('pending');
   const { toast } = useToast();
 
   const { isLoaded, loadError } = useJsApiLoader({
@@ -73,34 +73,30 @@ export function CurbieClient() {
        if (navigator.geolocation) {
          navigator.geolocation.getCurrentPosition(handleSuccess, handleError);
        }
-    } else if (storedPermission !== 'dismissed') {
-        if (navigator.permissions) {
-            try {
-                const status = await navigator.permissions.query({ name: 'geolocation' });
-                setPermissionStatus(status.state);
-                if (status.state === 'granted') {
-                    navigator.geolocation.getCurrentPosition(handleSuccess, handleError);
-                } else if (status.state !== 'prompt') {
-                    setShowPermissionModal(true);
-                }
-                status.onchange = () => {
-                    setPermissionStatus(status.state);
-                    if (status.state === 'granted') {
-                        navigator.geolocation.getCurrentPosition(handleSuccess, handleError);
-                    }
-                }
-            } catch(e) {
-                // Fallback for browsers that might not support query
-                setShowPermissionModal(true);
-            }
-        } else if (navigator.geolocation) { // Fallback for browsers without Permissions API
-            navigator.geolocation.getCurrentPosition(handleSuccess, () => {
+       return;
+    }
+    if(storedPermission === 'dismissed') {
+        setPermissionStatus('dismissed');
+        return;
+    }
+
+    if (navigator.permissions) {
+        try {
+            const status = await navigator.permissions.query({ name: 'geolocation' });
+            if (status.state === 'granted') {
+                handleSuccess(await new Promise((res, rej) => navigator.geolocation.getCurrentPosition(res, rej)));
+            } else if (status.state === 'prompt') {
                 setPermissionStatus('pending');
                 setShowPermissionModal(true);
-            });
+            } else {
+                setPermissionStatus('denied');
+                setShowPermissionModal(true);
+            }
+        } catch(e) {
+            setShowPermissionModal(true);
         }
-    } else {
-        setPermissionStatus('denied');
+    } else if (navigator.geolocation) { 
+        setShowPermissionModal(true);
     }
   }, [handleSuccess, handleError]);
   
@@ -116,6 +112,7 @@ export function CurbieClient() {
 
   const handleDismissPermission = () => {
     setShowPermissionModal(false);
+    setPermissionStatus('dismissed');
     localStorage.setItem('curbie_location_permission', 'dismissed');
   };
 
@@ -171,7 +168,7 @@ export function CurbieClient() {
         );
     }
 
-    if (!isLoaded || (permissionStatus === 'pending' && !userLocation)) {
+    if (!isLoaded) {
         return (
             <div className="flex items-center justify-center h-full">
                 <p>Loading map...</p>
@@ -179,11 +176,11 @@ export function CurbieClient() {
         );
     }
     
-    if (permissionStatus !== 'granted' || !userLocation) {
+    if (!userLocation) {
          return (
              <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 flex flex-col items-center gap-2 bg-background/80 p-4 rounded-lg text-center">
-                <p className="font-semibold text-sm">Location permission is required.</p>
-                <p className="text-xs text-muted-foreground">To use the map, please enable location access in your browser settings and refresh the page.</p>
+                <p className="font-semibold text-sm">Location permission is required to view map.</p>
+                <p className="text-xs text-muted-foreground">To use the map, please enable location access.</p>
             </div>
          );
     }
