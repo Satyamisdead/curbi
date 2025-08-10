@@ -32,34 +32,6 @@ const mapContainerStyle = {
 const mapOptions = {
     disableDefaultUI: true,
     zoomControl: false,
-    styles: [
-        {
-          "featureType": "poi",
-          "stylers": [
-            { "visibility": "off" }
-          ]
-        },
-        {
-          "featureType": "transit",
-          "stylers": [
-            { "visibility": "off" }
-          ]
-        },
-        {
-            "featureType": "road",
-            "elementType": "labels.icon",
-            "stylers": [
-                { "visibility": "off" }
-            ]
-        },
-        {
-            "featureType": "landscape",
-            "elementType": "labels",
-            "stylers": [
-                { "visibility": "off" }
-            ]
-        },
-    ]
 };
 
 
@@ -67,6 +39,7 @@ export function CurbieClient() {
   const [spots] = useState<ParkingSpot[]>(MOCK_SPOTS);
   const [selectedSpot, setSelectedSpot] = useState<ParkingSpot | null>(null);
   const [isParking, setIsParking] = useState(false);
+  const [parkedLocation, setParkedLocation] = useState<{ lat: number; lng: number } | null>(null);
   const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
   const [showPermissionModal, setShowPermissionModal] = useState(false);
   const [permissionStatus, setPermissionStatus] = useState<PermissionState | 'pending'>('pending');
@@ -78,10 +51,11 @@ export function CurbieClient() {
   });
   
   const handleSuccess = useCallback((position: GeolocationPosition) => {
-    setUserLocation({
+    const newUserLocation = {
       lat: position.coords.latitude,
       lng: position.coords.longitude,
-    });
+    };
+    setUserLocation(newUserLocation);
     setPermissionStatus('granted');
     setShowPermissionModal(false);
     localStorage.setItem('curbie_location_permission', 'granted');
@@ -101,11 +75,22 @@ export function CurbieClient() {
        }
     } else if (storedPermission !== 'dismissed') {
         if (navigator.permissions) {
-            const status = await navigator.permissions.query({ name: 'geolocation' });
-            setPermissionStatus(status.state);
-            if (status.state === 'granted') {
-                navigator.geolocation.getCurrentPosition(handleSuccess, handleError);
-            } else {
+            try {
+                const status = await navigator.permissions.query({ name: 'geolocation' });
+                setPermissionStatus(status.state);
+                if (status.state === 'granted') {
+                    navigator.geolocation.getCurrentPosition(handleSuccess, handleError);
+                } else if (status.state !== 'prompt') {
+                    setShowPermissionModal(true);
+                }
+                status.onchange = () => {
+                    setPermissionStatus(status.state);
+                    if (status.state === 'granted') {
+                        navigator.geolocation.getCurrentPosition(handleSuccess, handleError);
+                    }
+                }
+            } catch(e) {
+                // Fallback for browsers that might not support query
                 setShowPermissionModal(true);
             }
         } else if (navigator.geolocation) { // Fallback for browsers without Permissions API
@@ -162,7 +147,15 @@ export function CurbieClient() {
 
 
   const handleToggleParkingState = () => {
-    setIsParking(prevState => !prevState);
+    setIsParking(prevState => {
+        const isNowParking = !prevState;
+        if(isNowParking && userLocation) {
+            setParkedLocation(userLocation);
+        } else {
+            setParkedLocation(null);
+        }
+        return isNowParking;
+    });
   };
 
   const handleSpotClick = (spot: ParkingSpot) => {
@@ -178,7 +171,7 @@ export function CurbieClient() {
         );
     }
 
-    if (!isLoaded || permissionStatus === 'pending' && showPermissionModal) {
+    if (!isLoaded || (permissionStatus === 'pending' && !userLocation)) {
         return (
             <div className="flex items-center justify-center h-full">
                 <p>Loading map...</p>
@@ -204,6 +197,15 @@ export function CurbieClient() {
                 options={mapOptions}
             >
                 <Marker position={userLocation} />
+                {parkedLocation && (
+                    <Marker 
+                        position={parkedLocation}
+                        icon={{
+                            url: '/car-icon.svg',
+                            scaledSize: new window.google.maps.Size(40, 40),
+                        }}
+                    />
+                )}
                 {spots.map(spot => (
                     <Marker 
                         key={spot.id} 
@@ -254,6 +256,7 @@ export function CurbieClient() {
                 size="lg" 
                 className={`w-full h-24 rounded-2xl text-left flex items-center gap-4 shadow-lg transition-all duration-300 ${isParking ? 'bg-primary hover:bg-primary/90 text-primary-foreground' : 'bg-yellow-400 hover:bg-yellow-400/90 text-yellow-900'}`}
                 onClick={handleToggleParkingState}
+                disabled={!userLocation}
             >
                 {isParking ? <Car className="h-8 w-8"/> : <ParkingCircle className="h-8 w-8" />}
                 <div>
