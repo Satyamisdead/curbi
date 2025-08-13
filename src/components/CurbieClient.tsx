@@ -3,7 +3,6 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { AnimatePresence } from 'framer-motion';
-import { GoogleMap, useJsApiLoader, Marker } from '@react-google-maps/api';
 
 import type { ParkingSpot } from '@/types';
 import { Header } from '@/components/Header';
@@ -23,35 +22,19 @@ const MOCK_SPOTS: ParkingSpot[] = [
   { id: 'spot4', name: 'Mall Parking East', address: '101 Shopping Ctr, Eastwood', price: 5.00, distance: 4.1, rating: 4.8, isFavorite: false, availableSince: '12m ago', position: { lat: 37.785, lng: -122.405 } },
 ];
 
-const mapContainerStyle = {
-  width: '100%',
-  height: '100%',
-  borderRadius: '1rem',
-};
-
-const mapOptions = {
-    disableDefaultUI: true,
-    zoomControl: false,
-    styles: [],
-};
-
 const DEFAULT_CENTER = { lat: 37.7749, lng: -122.4194 }; // San Francisco
-
 
 export function CurbieClient() {
   const [spots] = useState<ParkingSpot[]>(MOCK_SPOTS);
   const [selectedSpot, setSelectedSpot] = useState<ParkingSpot | null>(null);
   const [isParking, setIsParking] = useState(false);
-  const [parkedLocation, setParkedLocation] = useState<{ lat: number; lng: number } | null>(null);
   const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
   const [showPermissionModal, setShowPermissionModal] = useState(false);
+  const [permissionStatus, setPermissionStatus] = useState<PermissionState | 'prompt' | 'dismissed'>('prompt');
   const { toast } = useToast();
-
-  const { isLoaded, loadError } = useJsApiLoader({
-    googleMapsApiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || "",
-    libraries: ['places'],
-  });
   
+  const API_KEY = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
+
   const requestLocation = useCallback(() => {
     navigator.geolocation.getCurrentPosition(
         (position) => {
@@ -60,10 +43,12 @@ export function CurbieClient() {
                 lng: position.coords.longitude,
             };
             setUserLocation(newUserLocation);
+            setPermissionStatus('granted');
             setShowPermissionModal(false);
             localStorage.setItem('curbie_location_permission', 'granted');
         },
         () => {
+            setPermissionStatus('denied');
             setShowPermissionModal(true);
             localStorage.setItem('curbie_location_permission', 'denied');
         }
@@ -73,10 +58,13 @@ export function CurbieClient() {
   const checkPermission = useCallback(async () => {
     const storedPermission = localStorage.getItem('curbie_location_permission');
     if (storedPermission === 'granted') {
+        setPermissionStatus('granted');
         requestLocation();
         return;
     }
-    if(storedPermission === 'dismissed'){
+    if(storedPermission === 'dismissed' || storedPermission === 'denied'){
+        setPermissionStatus(storedPermission);
+        setShowPermissionModal(true);
         return;
     }
 
@@ -87,13 +75,20 @@ export function CurbieClient() {
 
     try {
         const status = await navigator.permissions.query({ name: 'geolocation' });
+        setPermissionStatus(status.state);
         if (status.state === 'granted') {
             requestLocation();
-        } else if (status.state !== 'prompt') {
-            setShowPermissionModal(true);
         } else {
              setShowPermissionModal(true);
         }
+
+        status.onchange = () => {
+            setPermissionStatus(status.state);
+            if (status.state === 'granted') {
+                requestLocation();
+            }
+        };
+
     } catch (e) {
         console.error("Error checking permissions", e);
         setShowPermissionModal(true);
@@ -110,6 +105,7 @@ export function CurbieClient() {
 
   const handleDismissPermission = () => {
     setShowPermissionModal(false);
+    setPermissionStatus('dismissed');
     localStorage.setItem('curbie_location_permission', 'dismissed');
   };
 
@@ -141,73 +137,31 @@ export function CurbieClient() {
 
 
   const handleToggleParkingState = () => {
-    setIsParking(prevState => {
-        const isNowParking = !prevState;
-        if(isNowParking && userLocation) {
-            setParkedLocation(userLocation);
-        } else {
-            setParkedLocation(null);
-            setSelectedSpot(null); // Deselect spot when leaving
-        }
-        return isNowParking;
-    });
+    setIsParking(prevState => !prevState);
   };
 
   const handleSpotClick = (spot: ParkingSpot) => {
     setSelectedSpot(currentSpot => currentSpot?.id === spot.id ? null : spot);
   }
   
-  const renderMapContent = () => {
-    if (loadError) {
-        return (
-            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 flex items-center gap-2 bg-destructive/80 p-2 rounded-lg">
-                <p className="font-semibold text-sm text-destructive-foreground">Error loading maps. Please check API key.</p>
-            </div>
-        );
+  const getMapSrc = () => {
+    const base = "https://www.google.com/maps/embed/v1/view";
+    const location = userLocation || DEFAULT_CENTER;
+    const zoom = userLocation ? 17 : 12;
+    let markers = `&markers=color:blue%7Clabel:U%7C${location.lat},${location.lng}`;
+    
+    if (isParking && userLocation) {
+        markers += `&markers=icon:https://developers.google.com/maps/documentation/javascript/examples/full/images/beachflag.png%7C${userLocation.lat},${userLocation.lng}`;
     }
 
-    if (!isLoaded) {
-        return (
-            <div className="flex items-center justify-center h-full">
-                <p>Loading map...</p>
-            </div>
-        );
-    }
-    
-    return (
-        <GoogleMap
-            mapContainerStyle={mapContainerStyle}
-            center={userLocation || DEFAULT_CENTER}
-            zoom={userLocation ? 15 : 12}
-            options={mapOptions}
-        >
-            {userLocation && <Marker position={userLocation} />}
-            {parkedLocation && (
-                <Marker 
-                    position={parkedLocation}
-                    icon={{
-                        url: `data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="%233B82F6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-car"><path d="M14 16H9m10 0h1.5a2.5 2.5 0 0 0 0-5H19l-1.1-3.3a2.4 2.4 0 0 0-2.3-1.7H8.4a2.4 2.4 0 0 0-2.3 1.7L5 11H3.5a2.5 2.5 0 0 0 0 5H5m0 0v1a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-1M8 11h8m-8-3.5a.5.5 0 0 1 .5-.5h7a.5.5 0 0 1 .5.5v0a.5.5 0 0 1-.5.5h-7a.5.5 0 0 1-.5-.5z"/></svg>`,
-                        scaledSize: new window.google.maps.Size(48, 48),
-                    }}
-                />
-            )}
-            {spots.map(spot => (
-                <Marker 
-                    key={spot.id} 
-                    position={spot.position}
-                    onClick={() => handleSpotClick(spot)}
-                    icon={{
-                        path: 'M-10,0a10,10 0 1,0 20,0a10,10 0 1,0 -20,0',
-                        fillColor: selectedSpot?.id === spot.id ? '#1AC9C9' : '#28D828',
-                        fillOpacity: 1,
-                        strokeWeight: 0,
-                        scale: 1,
-                    }}
-                />
-            ))}
-        </GoogleMap>
-    );
+    spots.forEach(spot => {
+        const color = selectedSpot?.id === spot.id ? 'green' : 'red';
+        markers += `&markers=color:${color}%7C${spot.position.lat},${spot.position.lng}`;
+    });
+
+    return `${base}?key=${API_KEY}&center=${location.lat},${location.lng}&zoom=${zoom}${markers}`;
   }
+
 
   return (
     <div className="flex flex-col min-h-screen bg-background">
@@ -215,7 +169,11 @@ export function CurbieClient() {
       <main className="flex-1 overflow-y-auto pb-24">
         <AnimatePresence>
           {showPermissionModal && (
-            <LocationPermissionModal onAllow={handleAllowPermission} onLater={handleDismissPermission} />
+            <LocationPermissionModal 
+                onAllow={handleAllowPermission} 
+                onLater={handleDismissPermission}
+                status={permissionStatus}
+            />
           )}
         </AnimatePresence>
         <div className="container mx-auto px-4 py-6 space-y-6">
@@ -224,8 +182,23 @@ export function CurbieClient() {
                 <CardContent className="p-6">
                     <h2 className="text-xl font-bold">Interactive Map View</h2>
                     <p className="text-muted-foreground">Real-time parking spots with GPS navigation</p>
-                    <div className="relative mt-4 h-64 rounded-xl bg-slate-200/50">
-                        {renderMapContent()}
+                    <div className="relative mt-4 h-96 rounded-xl bg-slate-200/50">
+                        {API_KEY ? (
+                           <iframe
+                                width="100%"
+                                height="100%"
+                                style={{ border: 0, borderRadius: '0.75rem' }}
+                                loading="lazy"
+                                allowFullScreen
+                                referrerPolicy="no-referrer-when-downgrade"
+                                src={getMapSrc()}
+                            >
+                            </iframe>
+                        ) : (
+                             <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 flex items-center gap-2 bg-destructive/80 p-2 rounded-lg">
+                                <p className="font-semibold text-sm text-destructive-foreground">Error loading maps. Please check API key.</p>
+                            </div>
+                        )}
                     </div>
                 </CardContent>
             </Card>
