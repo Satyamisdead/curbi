@@ -37,67 +37,67 @@ export function CurbieClient() {
 
   const requestLocation = useCallback(() => {
     navigator.geolocation.getCurrentPosition(
-        (position) => {
-            const newUserLocation = {
-                lat: position.coords.latitude,
-                lng: position.coords.longitude,
-            };
-            setUserLocation(newUserLocation);
-            setPermissionStatus('granted');
-            setShowPermissionModal(false);
-            localStorage.setItem('curbie_location_permission', 'granted');
-        },
-        () => {
-            setPermissionStatus('denied');
-            setShowPermissionModal(true);
-            localStorage.setItem('curbie_location_permission', 'denied');
-        }
+      (position) => {
+        const newUserLocation = {
+          lat: position.coords.latitude,
+          lng: position.coords.longitude,
+        };
+        setUserLocation(newUserLocation);
+        setPermissionStatus('granted');
+        setShowPermissionModal(false);
+        localStorage.setItem('curbie_location_permission', 'granted');
+      },
+      () => {
+        setPermissionStatus('denied');
+        localStorage.setItem('curbie_location_permission', 'denied');
+        setShowPermissionModal(true); // Keep modal open or show again if denied
+      }
     );
   }, []);
 
   const checkPermission = useCallback(async () => {
     const storedPermission = localStorage.getItem('curbie_location_permission');
+    
     if (storedPermission === 'granted') {
         setPermissionStatus('granted');
         requestLocation();
         return;
     }
-    if(storedPermission === 'dismissed' || storedPermission === 'denied'){
+    
+    if (storedPermission === 'dismissed' || storedPermission === 'denied') {
         setPermissionStatus(storedPermission);
         setShowPermissionModal(true);
         return;
     }
 
+    // Fallback for browsers that might not support navigator.permissions
     if (!navigator.permissions) {
-        setShowPermissionModal(true);
-        return;
+      setShowPermissionModal(true);
+      return;
     }
 
     try {
-        const status = await navigator.permissions.query({ name: 'geolocation' });
-        setPermissionStatus(status.state);
-        if (status.state === 'granted') {
-            requestLocation();
-        } else {
-             setShowPermissionModal(true);
-        }
-
-        status.onchange = () => {
-            setPermissionStatus(status.state);
-            if (status.state === 'granted') {
-                requestLocation();
-            }
-        };
-
-    } catch (e) {
-        console.error("Error checking permissions", e);
+      const status = await navigator.permissions.query({ name: 'geolocation' });
+      setPermissionStatus(status.state);
+      
+      if (status.state === 'granted') {
+        requestLocation();
+      } else {
         setShowPermissionModal(true);
+      }
+      
+      // No onchange listener to avoid complexity, check on load is enough for most cases
+    } catch (e) {
+      console.error("Error checking permissions", e);
+      // If there's an error (e.g., in an insecure context), show the modal as a fallback.
+      setShowPermissionModal(true);
     }
   }, [requestLocation]);
 
   useEffect(() => {
     checkPermission();
   }, [checkPermission]);
+
 
   const handleAllowPermission = () => {
     requestLocation();
@@ -148,18 +148,24 @@ export function CurbieClient() {
     const base = "https://www.google.com/maps/embed/v1/view";
     const location = userLocation || DEFAULT_CENTER;
     const zoom = userLocation ? 17 : 12;
-    let markers = `&markers=color:blue%7Clabel:U%7C${location.lat},${location.lng}`;
+
+    // The Embed API doesn't support multiple markers in the same way the JS API does.
+    // We can center the map and show a user marker.
+    // Showing multiple spots would require a different approach or a more complex URL.
+    // For now, let's just show the user's location.
     
-    if (isParking && userLocation) {
-        markers += `&markers=icon:https://developers.google.com/maps/documentation/javascript/examples/full/images/beachflag.png%7C${userLocation.lat},${userLocation.lng}`;
+    let url = `${base}?key=${API_KEY}&center=${location.lat},${location.lng}&zoom=${zoom}`;
+
+    if (userLocation) {
+        // You can add one marker with the 'q' parameter for a place search or coordinates
     }
 
-    spots.forEach(spot => {
-        const color = selectedSpot?.id === spot.id ? 'green' : 'red';
-        markers += `&markers=color:${color}%7C${spot.position.lat},${spot.position.lng}`;
-    });
+    if (isParking && userLocation) {
+      // Embed API doesn't support custom icons easily. We'll just center on the parked location.
+       url = `${base}?key=${API_KEY}&center=${userLocation.lat},${userLocation.lng}&zoom=18`;
+    }
 
-    return `${base}?key=${API_KEY}&center=${location.lat},${location.lng}&zoom=${zoom}${markers}`;
+    return url;
   }
 
 
