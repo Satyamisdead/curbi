@@ -8,7 +8,6 @@ import type { ParkingSpot } from '@/types';
 import { Header } from '@/components/Header';
 import { SpotListItem } from '@/components/SpotListItem';
 import { BottomNav } from '@/components/BottomNav';
-import { LocationPermissionModal } from '@/components/LocationPermissionModal';
 
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -29,8 +28,6 @@ export function CurbieClient() {
   const [selectedSpot, setSelectedSpot] = useState<ParkingSpot | null>(null);
   const [isParking, setIsParking] = useState(false);
   const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
-  const [showPermissionModal, setShowPermissionModal] = useState(false);
-  const [permissionStatus, setPermissionStatus] = useState<PermissionState | 'prompt' | 'dismissed'>('prompt');
   const { toast } = useToast();
   
   const API_KEY = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
@@ -43,71 +40,18 @@ export function CurbieClient() {
           lng: position.coords.longitude,
         };
         setUserLocation(newUserLocation);
-        setPermissionStatus('granted');
-        setShowPermissionModal(false);
         localStorage.setItem('curbie_location_permission', 'granted');
       },
       () => {
-        setPermissionStatus('denied');
+        console.log("Location permission denied or failed.");
         localStorage.setItem('curbie_location_permission', 'denied');
-        setShowPermissionModal(true); // Keep modal open or show again if denied
       }
     );
   }, []);
 
-  const checkPermission = useCallback(async () => {
-    const storedPermission = localStorage.getItem('curbie_location_permission');
-    
-    if (storedPermission === 'granted') {
-        setPermissionStatus('granted');
-        requestLocation();
-        return;
-    }
-    
-    if (storedPermission === 'dismissed' || storedPermission === 'denied') {
-        setPermissionStatus(storedPermission);
-        setShowPermissionModal(true);
-        return;
-    }
-
-    // Fallback for browsers that might not support navigator.permissions
-    if (!navigator.permissions) {
-      setShowPermissionModal(true);
-      return;
-    }
-
-    try {
-      const status = await navigator.permissions.query({ name: 'geolocation' });
-      setPermissionStatus(status.state);
-      
-      if (status.state === 'granted') {
-        requestLocation();
-      } else {
-        setShowPermissionModal(true);
-      }
-      
-      // No onchange listener to avoid complexity, check on load is enough for most cases
-    } catch (e) {
-      console.error("Error checking permissions", e);
-      // If there's an error (e.g., in an insecure context), show the modal as a fallback.
-      setShowPermissionModal(true);
-    }
-  }, [requestLocation]);
-
   useEffect(() => {
-    checkPermission();
-  }, [checkPermission]);
-
-
-  const handleAllowPermission = () => {
     requestLocation();
-  };
-
-  const handleDismissPermission = () => {
-    setShowPermissionModal(false);
-    setPermissionStatus('dismissed');
-    localStorage.setItem('curbie_location_permission', 'dismissed');
-  };
+  }, [requestLocation]);
 
   useEffect(() => {
     if (!selectedSpot || isParking === null) return;
@@ -148,22 +92,8 @@ export function CurbieClient() {
     const base = "https://www.google.com/maps/embed/v1/view";
     const location = userLocation || DEFAULT_CENTER;
     const zoom = userLocation ? 17 : 12;
-
-    // The Embed API doesn't support multiple markers in the same way the JS API does.
-    // We can center the map and show a user marker.
-    // Showing multiple spots would require a different approach or a more complex URL.
-    // For now, let's just show the user's location.
     
     let url = `${base}?key=${API_KEY}&center=${location.lat},${location.lng}&zoom=${zoom}`;
-
-    if (userLocation) {
-        // You can add one marker with the 'q' parameter for a place search or coordinates
-    }
-
-    if (isParking && userLocation) {
-      // Embed API doesn't support custom icons easily. We'll just center on the parked location.
-       url = `${base}?key=${API_KEY}&center=${userLocation.lat},${userLocation.lng}&zoom=18`;
-    }
 
     return url;
   }
@@ -173,15 +103,6 @@ export function CurbieClient() {
     <div className="flex flex-col min-h-screen bg-background">
       <Header />
       <main className="flex-1 overflow-y-auto pb-24">
-        <AnimatePresence>
-          {showPermissionModal && (
-            <LocationPermissionModal 
-                onAllow={handleAllowPermission} 
-                onLater={handleDismissPermission}
-                status={permissionStatus}
-            />
-          )}
-        </AnimatePresence>
         <div className="container mx-auto px-4 py-6 space-y-6">
             
             <Card className="overflow-hidden rounded-3xl shadow-lg">
