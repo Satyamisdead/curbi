@@ -8,7 +8,6 @@ import type { ParkingSpot } from '@/types';
 import { Header } from '@/components/Header';
 import { SpotListItem } from '@/components/SpotListItem';
 import { BottomNav } from '@/components/BottomNav';
-
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
