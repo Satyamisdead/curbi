@@ -31,7 +31,7 @@ export function LocationPermissionModal({ onAllow, onLater }: LocationPermission
         </div>
         <h2 className="text-2xl font-bold mb-2">Enable Location Services</h2>
         <p className="text-muted-foreground mb-8">
-          To help you find the best parking spots, location access is required.
+          To help you find the best parking spots, Curbie needs to know your location.
         </p>
         <div className="space-y-3">
           <Button size="lg" className="w-full h-14 text-lg font-bold rounded-2xl" onClick={onAllow}>

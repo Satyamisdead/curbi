@@ -32,6 +32,7 @@ const mapContainerStyle = {
 const mapOptions = {
     disableDefaultUI: true,
     zoomControl: false,
+    styles: [],
 };
 
 
@@ -42,7 +43,6 @@ export function CurbieClient() {
   const [parkedLocation, setParkedLocation] = useState<{ lat: number; lng: number } | null>(null);
   const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
   const [showPermissionModal, setShowPermissionModal] = useState(false);
-  const [permissionStatus, setPermissionStatus] = useState<PermissionState | 'pending' | 'dismissed'>('pending');
   const { toast } = useToast();
 
   const { isLoaded, loadError } = useJsApiLoader({
@@ -50,69 +50,67 @@ export function CurbieClient() {
     libraries: ['places'],
   });
   
-  const handleSuccess = useCallback((position: GeolocationPosition) => {
-    const newUserLocation = {
-      lat: position.coords.latitude,
-      lng: position.coords.longitude,
-    };
-    setUserLocation(newUserLocation);
-    setPermissionStatus('granted');
-    setShowPermissionModal(false);
-    localStorage.setItem('curbie_location_permission', 'granted');
+  const getLocation = useCallback(() => {
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        const newUserLocation = {
+          lat: position.coords.latitude,
+          lng: position.coords.longitude,
+        };
+        setUserLocation(newUserLocation);
+        setShowPermissionModal(false);
+        localStorage.setItem('curbie_location_permission', 'granted');
+      },
+      () => {
+        // Error callback: user denied permission or another error occurred.
+        setShowPermissionModal(true);
+        localStorage.setItem('curbie_location_permission', 'denied');
+      }
+    );
   }, []);
 
-  const handleError = useCallback(() => {
-    setPermissionStatus('denied');
-    setShowPermissionModal(true);
-    localStorage.setItem('curbie_location_permission', 'denied');
-  }, []);
+  useEffect(() => {
+    // Check permission status on component mount
+    const checkPermission = async () => {
+        if (!navigator.permissions) {
+            // Fallback for older browsers
+            const storedPermission = localStorage.getItem('curbie_location_permission');
+            if (storedPermission === 'granted') {
+                getLocation();
+            } else if (storedPermission !== 'dismissed') {
+                setShowPermissionModal(true);
+            }
+            return;
+        }
 
-  const checkPermission = useCallback(async () => {
-    const storedPermission = localStorage.getItem('curbie_location_permission');
-    if (storedPermission === 'granted') {
-       if (navigator.geolocation) {
-         navigator.geolocation.getCurrentPosition(handleSuccess, handleError);
-       }
-       return;
-    }
-    if(storedPermission === 'dismissed') {
-        setPermissionStatus('dismissed');
-        return;
-    }
-
-    if (navigator.permissions) {
         try {
             const status = await navigator.permissions.query({ name: 'geolocation' });
             if (status.state === 'granted') {
-                handleSuccess(await new Promise((res, rej) => navigator.geolocation.getCurrentPosition(res, rej)));
+                getLocation();
             } else if (status.state === 'prompt') {
-                setPermissionStatus('pending');
-                setShowPermissionModal(true);
+                const storedPermission = localStorage.getItem('curbie_location_permission');
+                if (storedPermission !== 'dismissed') {
+                    setShowPermissionModal(true);
+                }
             } else {
-                setPermissionStatus('denied');
-                setShowPermissionModal(true);
+                 setShowPermissionModal(true);
             }
-        } catch(e) {
+        } catch (e) {
+            console.error("Error checking permissions", e);
             setShowPermissionModal(true);
         }
-    } else if (navigator.geolocation) { 
-        setShowPermissionModal(true);
-    }
-  }, [handleSuccess, handleError]);
+    };
   
-  useEffect(() => {
     checkPermission();
-  }, [checkPermission]);
-  
-  const handleAllowPermission = useCallback(() => {
-    if (navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition(handleSuccess, handleError);
-    }
-  }, [handleSuccess, handleError]);
+  }, [getLocation]);
+
+  const handleAllowPermission = () => {
+    // Directly request location, which triggers browser prompt if needed
+    getLocation();
+  };
 
   const handleDismissPermission = () => {
     setShowPermissionModal(false);
-    setPermissionStatus('dismissed');
     localStorage.setItem('curbie_location_permission', 'dismissed');
   };
 
@@ -150,6 +148,7 @@ export function CurbieClient() {
             setParkedLocation(userLocation);
         } else {
             setParkedLocation(null);
+            setSelectedSpot(null); // Deselect spot when leaving
         }
         return isNowParking;
     });
@@ -179,8 +178,8 @@ export function CurbieClient() {
     if (!userLocation) {
          return (
              <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 flex flex-col items-center gap-2 bg-background/80 p-4 rounded-lg text-center">
-                <p className="font-semibold text-sm">Location permission is required to view map.</p>
-                <p className="text-xs text-muted-foreground">To use the map, please enable location access.</p>
+                <p className="font-semibold text-sm">Waiting for location permission...</p>
+                <p className="text-xs text-muted-foreground">Please grant location access to use the map.</p>
             </div>
          );
     }
@@ -198,8 +197,8 @@ export function CurbieClient() {
                     <Marker 
                         position={parkedLocation}
                         icon={{
-                            url: '/car-icon.svg',
-                            scaledSize: new window.google.maps.Size(40, 40),
+                            url: `data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="%233B82F6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-car"><path d="M14 16H9m10 0h1.5a2.5 2.5 0 0 0 0-5H19l-1.1-3.3a2.4 2.4 0 0 0-2.3-1.7H8.4a2.4 2.4 0 0 0-2.3 1.7L5 11H3.5a2.5 2.5 0 0 0 0 5H5m0 0v1a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-1M8 11h8m-8-3.5a.5.5 0 0 1 .5-.5h7a.5.5 0 0 1 .5.5v0a.5.5 0 0 1-.5.5h-7a.5.5 0 0 1-.5-.5z"/></svg>`,
+                            scaledSize: new window.google.maps.Size(48, 48),
                         }}
                     />
                 )}
@@ -223,7 +222,7 @@ export function CurbieClient() {
 
     return (
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 flex items-center gap-2 bg-background/80 p-2 rounded-lg">
-            <p className="font-semibold text-sm">Waiting for location permission...</p>
+            <p className="font-semibold text-sm">Initializing Map...</p>
        </div>
     );
   }
@@ -251,14 +250,14 @@ export function CurbieClient() {
 
             <Button 
                 size="lg" 
-                className={`w-full h-24 rounded-2xl text-left flex items-center gap-4 shadow-lg transition-all duration-300 ${isParking ? 'bg-primary hover:bg-primary/90 text-primary-foreground' : 'bg-yellow-400 hover:bg-yellow-400/90 text-yellow-900'}`}
+                className={`w-full h-24 rounded-2xl text-left flex items-center gap-4 shadow-lg transition-all duration-300 ${isParking ? 'bg-blue-600 hover:bg-blue-600/90 text-primary-foreground' : 'bg-yellow-400 hover:bg-yellow-400/90 text-yellow-900'}`}
                 onClick={handleToggleParkingState}
                 disabled={!userLocation}
             >
                 {isParking ? <Car className="h-8 w-8"/> : <ParkingCircle className="h-8 w-8" />}
                 <div>
                     <p className="font-bold text-xl">{isParking ? "I'm Leaving" : "I am Parking"}</p>
-                    <p className="font-normal opacity-90">{isParking ? "Tap to report your parking spot as available" : "Tap to let us know when you've left your spot"}</p>
+                    <p className="font-normal opacity-90">{isParking ? "Tap to report your parking spot as available" : "Tap to remember where you parked"}</p>
                 </div>
             </Button>
             
