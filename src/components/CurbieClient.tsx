@@ -35,6 +35,8 @@ const mapOptions = {
     styles: [],
 };
 
+const DEFAULT_CENTER = { lat: 37.7749, lng: -122.4194 }; // San Francisco
+
 
 export function CurbieClient() {
   const [spots] = useState<ParkingSpot[]>(MOCK_SPOTS);
@@ -50,61 +52,60 @@ export function CurbieClient() {
     libraries: ['places'],
   });
   
-  const getLocation = useCallback(() => {
+  const requestLocation = useCallback(() => {
     navigator.geolocation.getCurrentPosition(
-      (position) => {
-        const newUserLocation = {
-          lat: position.coords.latitude,
-          lng: position.coords.longitude,
-        };
-        setUserLocation(newUserLocation);
-        setShowPermissionModal(false);
-        localStorage.setItem('curbie_location_permission', 'granted');
-      },
-      () => {
-        // Error callback: user denied permission or another error occurred.
-        setShowPermissionModal(true);
-        localStorage.setItem('curbie_location_permission', 'denied');
-      }
+        (position) => {
+            const newUserLocation = {
+                lat: position.coords.latitude,
+                lng: position.coords.longitude,
+            };
+            setUserLocation(newUserLocation);
+            setShowPermissionModal(false);
+            localStorage.setItem('curbie_location_permission', 'granted');
+        },
+        () => {
+            setShowPermissionModal(true);
+            localStorage.setItem('curbie_location_permission', 'denied');
+        }
     );
   }, []);
 
-  useEffect(() => {
-    // Check permission status on component mount
-    const checkPermission = async () => {
-        if (!navigator.permissions) {
-            // Fallback for older browsers
-            const storedPermission = localStorage.getItem('curbie_location_permission');
-            if (storedPermission === 'granted') {
-                getLocation();
-            } else if (storedPermission !== 'dismissed') {
-                setShowPermissionModal(true);
-            }
-            return;
-        }
+  const checkPermission = useCallback(async () => {
+    const storedPermission = localStorage.getItem('curbie_location_permission');
+    if (storedPermission === 'granted') {
+        requestLocation();
+        return;
+    }
+    if(storedPermission === 'dismissed'){
+        return;
+    }
 
-        try {
-            const status = await navigator.permissions.query({ name: 'geolocation' });
-            if (status.state === 'granted') {
-                getLocation();
-            } else {
-                 const storedPermission = localStorage.getItem('curbie_location_permission');
-                 if (storedPermission !== 'dismissed') {
-                    setShowPermissionModal(true);
-                 }
-            }
-        } catch (e) {
-            console.error("Error checking permissions", e);
+    if (!navigator.permissions) {
+        setShowPermissionModal(true);
+        return;
+    }
+
+    try {
+        const status = await navigator.permissions.query({ name: 'geolocation' });
+        if (status.state === 'granted') {
+            requestLocation();
+        } else if (status.state !== 'prompt') {
             setShowPermissionModal(true);
+        } else {
+             setShowPermissionModal(true);
         }
-    };
-  
+    } catch (e) {
+        console.error("Error checking permissions", e);
+        setShowPermissionModal(true);
+    }
+  }, [requestLocation]);
+
+  useEffect(() => {
     checkPermission();
-  }, [getLocation]);
+  }, [checkPermission]);
 
   const handleAllowPermission = () => {
-    // Directly request location, which triggers browser prompt if needed
-    getLocation();
+    requestLocation();
   };
 
   const handleDismissPermission = () => {
@@ -173,55 +174,38 @@ export function CurbieClient() {
         );
     }
     
-    if (!userLocation) {
-         return (
-             <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 flex flex-col items-center gap-2 bg-background/80 p-4 rounded-lg text-center">
-                <p className="font-semibold text-sm">Waiting for location permission...</p>
-                <p className="text-xs text-muted-foreground">Please grant location access to use the map.</p>
-            </div>
-         );
-    }
-
-    if (userLocation) {
-        return (
-            <GoogleMap
-                mapContainerStyle={mapContainerStyle}
-                center={userLocation}
-                zoom={15}
-                options={mapOptions}
-            >
-                <Marker position={userLocation} />
-                {parkedLocation && (
-                    <Marker 
-                        position={parkedLocation}
-                        icon={{
-                            url: `data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="%233B82F6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-car"><path d="M14 16H9m10 0h1.5a2.5 2.5 0 0 0 0-5H19l-1.1-3.3a2.4 2.4 0 0 0-2.3-1.7H8.4a2.4 2.4 0 0 0-2.3 1.7L5 11H3.5a2.5 2.5 0 0 0 0 5H5m0 0v1a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-1M8 11h8m-8-3.5a.5.5 0 0 1 .5-.5h7a.5.5 0 0 1 .5.5v0a.5.5 0 0 1-.5.5h-7a.5.5 0 0 1-.5-.5z"/></svg>`,
-                            scaledSize: new window.google.maps.Size(48, 48),
-                        }}
-                    />
-                )}
-                {spots.map(spot => (
-                    <Marker 
-                        key={spot.id} 
-                        position={spot.position}
-                        onClick={() => handleSpotClick(spot)}
-                        icon={{
-                            path: 'M-10,0a10,10 0 1,0 20,0a10,10 0 1,0 -20,0',
-                            fillColor: selectedSpot?.id === spot.id ? '#1AC9C9' : '#28D828',
-                            fillOpacity: 1,
-                            strokeWeight: 0,
-                            scale: 1,
-                        }}
-                    />
-                ))}
-            </GoogleMap>
-        );
-    }
-
     return (
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 flex items-center gap-2 bg-background/80 p-2 rounded-lg">
-            <p className="font-semibold text-sm">Initializing Map...</p>
-       </div>
+        <GoogleMap
+            mapContainerStyle={mapContainerStyle}
+            center={userLocation || DEFAULT_CENTER}
+            zoom={userLocation ? 15 : 12}
+            options={mapOptions}
+        >
+            {userLocation && <Marker position={userLocation} />}
+            {parkedLocation && (
+                <Marker 
+                    position={parkedLocation}
+                    icon={{
+                        url: `data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="%233B82F6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-car"><path d="M14 16H9m10 0h1.5a2.5 2.5 0 0 0 0-5H19l-1.1-3.3a2.4 2.4 0 0 0-2.3-1.7H8.4a2.4 2.4 0 0 0-2.3 1.7L5 11H3.5a2.5 2.5 0 0 0 0 5H5m0 0v1a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-1M8 11h8m-8-3.5a.5.5 0 0 1 .5-.5h7a.5.5 0 0 1 .5.5v0a.5.5 0 0 1-.5.5h-7a.5.5 0 0 1-.5-.5z"/></svg>`,
+                        scaledSize: new window.google.maps.Size(48, 48),
+                    }}
+                />
+            )}
+            {spots.map(spot => (
+                <Marker 
+                    key={spot.id} 
+                    position={spot.position}
+                    onClick={() => handleSpotClick(spot)}
+                    icon={{
+                        path: 'M-10,0a10,10 0 1,0 20,0a10,10 0 1,0 -20,0',
+                        fillColor: selectedSpot?.id === spot.id ? '#1AC9C9' : '#28D828',
+                        fillOpacity: 1,
+                        strokeWeight: 0,
+                        scale: 1,
+                    }}
+                />
+            ))}
+        </GoogleMap>
     );
   }
 
