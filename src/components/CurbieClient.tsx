@@ -87,13 +87,11 @@ export function CurbieClient() {
             const status = await navigator.permissions.query({ name: 'geolocation' });
             if (status.state === 'granted') {
                 getLocation();
-            } else if (status.state === 'prompt') {
-                const storedPermission = localStorage.getItem('curbie_location_permission');
-                if (storedPermission !== 'dismissed') {
-                    setShowPermissionModal(true);
-                }
             } else {
-                 setShowPermissionModal(true);
+                 const storedPermission = localStorage.getItem('curbie_location_permission');
+                 if (storedPermission !== 'dismissed') {
+                    setShowPermissionModal(true);
+                 }
             }
         } catch (e) {
             console.error("Error checking permissions", e);
