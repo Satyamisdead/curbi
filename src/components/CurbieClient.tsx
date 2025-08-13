@@ -2,7 +2,6 @@
 "use client";
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { AnimatePresence } from 'framer-motion';
 
 import type { ParkingSpot } from '@/types';
 import { Header } from '@/components/Header';
@@ -40,11 +39,9 @@ export function CurbieClient() {
           lng: position.coords.longitude,
         };
         setUserLocation(newUserLocation);
-        localStorage.setItem('curbie_location_permission', 'granted');
       },
       () => {
         console.log("Location permission denied or failed.");
-        localStorage.setItem('curbie_location_permission', 'denied');
       }
     );
   }, []);
@@ -83,10 +80,6 @@ export function CurbieClient() {
   const handleToggleParkingState = () => {
     setIsParking(prevState => !prevState);
   };
-
-  const handleSpotClick = (spot: ParkingSpot) => {
-    setSelectedSpot(currentSpot => currentSpot?.id === spot.id ? null : spot);
-  }
   
   const getMapSrc = () => {
     const base = "https://www.google.com/maps/embed/v1/view";
@@ -106,15 +99,13 @@ export function CurbieClient() {
         <div className="container mx-auto px-4 py-6 space-y-6">
             
             <Card className="overflow-hidden rounded-3xl shadow-lg">
-                <CardContent className="p-6">
-                    <h2 className="text-xl font-bold">Interactive Map View</h2>
-                    <p className="text-muted-foreground">Real-time parking spots with GPS navigation</p>
-                    <div className="relative mt-4 h-96 rounded-xl bg-slate-200/50">
+                <CardContent className="p-0">
+                    <div className="relative h-96">
                         {API_KEY ? (
                            <iframe
                                 width="100%"
                                 height="100%"
-                                style={{ border: 0, borderRadius: '0.75rem' }}
+                                style={{ border: 0 }}
                                 loading="lazy"
                                 allowFullScreen
                                 referrerPolicy="no-referrer-when-downgrade"
