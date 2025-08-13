@@ -30,20 +30,7 @@ const mapContainerStyle = {
 const mapOptions = {
   disableDefaultUI: true,
   zoomControl: true,
-  styles: [
-    {
-      "featureType": "poi",
-      "stylers": [
-        { "visibility": "off" }
-      ]
-    },
-    {
-      "featureType": "transit",
-      "stylers": [
-        { "visibility": "off" }
-      ]
-    },
-  ]
+  styles: []
 };
 
 export function CurbieClient() {
@@ -54,10 +41,8 @@ export function CurbieClient() {
   const [parkedLocation, setParkedLocation] = useState<{ lat: number; lng: number } | null>(null);
   const { toast } = useToast();
   
-  const API_KEY = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || "";
-
   const { isLoaded, loadError } = useJsApiLoader({
-    googleMapsApiKey: API_KEY,
+    googleMapsApiKey: "AIzaSyBAplFS33D_DNgDLhMfc95mwdWp_NUjBGA",
   });
 
   const requestLocation = useCallback(() => {
