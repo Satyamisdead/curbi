@@ -55,10 +55,14 @@ export function CurbieClient() {
         setUserLocation(newUserLocation);
       },
       () => {
-        console.log("Location permission denied or failed.");
+        toast({
+          variant: "destructive",
+          title: "Location Permission Denied",
+          description: "Please enable location access in your browser settings to use this feature.",
+        });
       }
     );
-  }, []);
+  }, [toast]);
 
   useEffect(() => {
     requestLocation();
@@ -80,9 +84,9 @@ export function CurbieClient() {
       });
     } else {
       // Logic for parking
-      if (userLocation) {
+      const park = (location: { lat: number; lng: number }) => {
         setIsParking(true);
-        setParkedLocation(userLocation);
+        setParkedLocation(location);
         toast({
             title: (
                 <div className="flex items-center gap-2">
@@ -92,6 +96,28 @@ export function CurbieClient() {
             ),
             description: `Enjoy your time! We'll remember where you parked.`,
         });
+      }
+
+      if (userLocation) {
+        park(userLocation);
+      } else {
+        navigator.geolocation.getCurrentPosition(
+          (position) => {
+            const newUserLocation = {
+              lat: position.coords.latitude,
+              lng: position.coords.longitude,
+            };
+            setUserLocation(newUserLocation);
+            park(newUserLocation);
+          },
+          () => {
+            toast({
+              variant: "destructive",
+              title: "Could not get location",
+              description: "Please grant location permission and try again.",
+            });
+          }
+        );
       }
     }
   };
@@ -121,8 +147,8 @@ export function CurbieClient() {
                               <Marker 
                                 position={parkedLocation} 
                                 icon={{
-                                  url: '/car-marker.svg',
-                                  scaledSize: new window.google.maps.Size(40, 40)
+                                  url: 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="%233B82F6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-car"><path d="M19 17h2c.6 0 1-.4 1-1v-3c0-.9-.7-1.7-1.5-1.9C18.7 10.6 16 10 16 10s-1.3-1.4-2.2-2.3c-.5-.4-1.1-.7-1.8-.7H5c-.6 0-1.1.4-1.4.9L2 17h15m-4 0v2m-1-5c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2Z"/></svg>',
+                                  scaledSize: new window.google.maps.Size(48, 48)
                                 }}
                               />
                             )}
@@ -140,7 +166,6 @@ export function CurbieClient() {
                 size="lg" 
                 className={`w-full h-24 rounded-2xl text-left flex items-center gap-4 shadow-lg transition-all duration-300 ${isParking ? 'bg-blue-600 hover:bg-blue-600/90 text-primary-foreground' : 'bg-yellow-400 hover:bg-yellow-400/90 text-yellow-900'}`}
                 onClick={handleToggleParkingState}
-                disabled={!userLocation}
             >
                 {isParking ? <Car className="h-8 w-8"/> : <ParkingCircle className="h-8 w-8" />}
                 <div>
