@@ -2,6 +2,7 @@
 "use client";
 
 import React, { useState, useEffect, useCallback } from 'react';
+import { GoogleMap, useJsApiLoader, Marker } from '@react-google-maps/api';
 
 import type { ParkingSpot } from '@/types';
 import { Header } from '@/components/Header';
@@ -22,14 +23,43 @@ const MOCK_SPOTS: ParkingSpot[] = [
 
 const DEFAULT_CENTER = { lat: 37.7749, lng: -122.4194 }; // San Francisco
 
+const mapContainerStyle = {
+  width: '100%',
+  height: '100%',
+};
+
+const mapOptions = {
+  disableDefaultUI: true,
+  zoomControl: true,
+  styles: [
+    {
+      "featureType": "poi",
+      "stylers": [
+        { "visibility": "off" }
+      ]
+    },
+    {
+      "featureType": "transit",
+      "stylers": [
+        { "visibility": "off" }
+      ]
+    },
+  ]
+};
+
 export function CurbieClient() {
   const [spots] = useState<ParkingSpot[]>(MOCK_SPOTS);
   const [selectedSpot, setSelectedSpot] = useState<ParkingSpot | null>(null);
   const [isParking, setIsParking] = useState(false);
   const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
+  const [parkedLocation, setParkedLocation] = useState<{ lat: number; lng: number } | null>(null);
   const { toast } = useToast();
   
-  const API_KEY = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
+  const API_KEY = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || "";
+
+  const { isLoaded, loadError } = useJsApiLoader({
+    googleMapsApiKey: API_KEY,
+  });
 
   const requestLocation = useCallback(() => {
     navigator.geolocation.getCurrentPosition(
@@ -50,10 +80,25 @@ export function CurbieClient() {
     requestLocation();
   }, [requestLocation]);
 
-  useEffect(() => {
-    if (!selectedSpot || isParking === null) return;
-
+  const handleToggleParkingState = () => {
     if (isParking) {
+      // Logic for leaving
+      setIsParking(false);
+      setParkedLocation(null);
+      toast({
+          title: (
+              <div className="flex items-center gap-2">
+                  <CheckCircle className="h-5 w-5 text-green-500" />
+                  <span className="font-semibold">Spot Reported</span>
+              </div>
+          ),
+          description: "Thanks for sharing your parking spot with the community!",
+      });
+    } else {
+      // Logic for parking
+      if (userLocation) {
+        setIsParking(true);
+        setParkedLocation(userLocation);
         toast({
             title: (
                 <div className="flex items-center gap-2">
@@ -61,36 +106,11 @@ export function CurbieClient() {
                     <span className="font-semibold">You've Parked</span>
                 </div>
             ),
-            description: `Enjoy your time! We'll remember where you parked at ${selectedSpot.name}.`,
+            description: `Enjoy your time! We'll remember where you parked.`,
         });
-    } else {
-        toast({
-            title: (
-                <div className="flex items-center gap-2">
-                    <CheckCircle className="h-5 w-5 text-green-500" />
-                    <span className="font-semibold">Spot Reported</span>
-                </div>
-            ),
-            description: "Thanks for sharing your parking spot with the community!",
-        });
+      }
     }
-  }, [isParking, toast, selectedSpot]);
-
-
-  const handleToggleParkingState = () => {
-    setIsParking(prevState => !prevState);
   };
-  
-  const getMapSrc = () => {
-    const base = "https://www.google.com/maps/embed/v1/view";
-    const location = userLocation || DEFAULT_CENTER;
-    const zoom = userLocation ? 17 : 12;
-    
-    let url = `${base}?key=${API_KEY}&center=${location.lat},${location.lng}&zoom=${zoom}`;
-
-    return url;
-  }
-
 
   return (
     <div className="flex flex-col min-h-screen bg-background">
@@ -101,20 +121,31 @@ export function CurbieClient() {
             <Card className="overflow-hidden rounded-3xl shadow-lg">
                 <CardContent className="p-0">
                     <div className="relative h-96">
-                        {API_KEY ? (
-                           <iframe
-                                width="100%"
-                                height="100%"
-                                style={{ border: 0 }}
-                                loading="lazy"
-                                allowFullScreen
-                                referrerPolicy="no-referrer-when-downgrade"
-                                src={getMapSrc()}
-                            >
-                            </iframe>
-                        ) : (
+                        {loadError && (
                              <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 flex items-center gap-2 bg-destructive/80 p-2 rounded-lg">
-                                <p className="font-semibold text-sm text-destructive-foreground">Error loading maps. Please check API key.</p>
+                                <p className="font-semibold text-sm text-destructive-foreground">Error loading maps.</p>
+                            </div>
+                        )}
+                        {isLoaded ? (
+                           <GoogleMap
+                            mapContainerStyle={mapContainerStyle}
+                            center={userLocation || DEFAULT_CENTER}
+                            zoom={userLocation ? 17 : 12}
+                            options={mapOptions}
+                           >
+                            {isParking && parkedLocation && (
+                              <Marker 
+                                position={parkedLocation} 
+                                icon={{
+                                  url: '/car-marker.svg',
+                                  scaledSize: new window.google.maps.Size(40, 40)
+                                }}
+                              />
+                            )}
+                           </GoogleMap>
+                        ) : (
+                            <div className="w-full h-full flex justify-center items-center bg-muted">
+                              <p>Loading map...</p>
                             </div>
                         )}
                     </div>
