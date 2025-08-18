@@ -19,7 +19,7 @@ const achievements = [
         total: 1,
         color: 'text-yellow-500',
         progressColor: 'bg-yellow-500',
-        iconBg: 'bg-yellow-100',
+        iconBg: 'bg-yellow-100 dark:bg-yellow-900/50',
     },
     {
         icon: Check,
@@ -31,7 +31,7 @@ const achievements = [
         total: 50,
         color: 'text-green-500',
         progressColor: 'bg-green-500',
-        iconBg: 'bg-green-100',
+        iconBg: 'bg-green-100 dark:bg-green-900/50',
     },
     {
         icon: Star,
@@ -43,7 +43,7 @@ const achievements = [
         total: 100,
         color: 'text-blue-500',
         progressColor: 'bg-blue-500',
-        iconBg: 'bg-blue-100',
+        iconBg: 'bg-blue-100 dark:bg-blue-900/50',
     },
     {
         icon: Check,
@@ -55,7 +55,7 @@ const achievements = [
         total: 1,
         color: 'text-purple-500',
         progressColor: 'bg-purple-500',
-        iconBg: 'bg-purple-100',
+        iconBg: 'bg-purple-100 dark:bg-purple-900/50',
     },
 ];
 
@@ -91,7 +91,7 @@ const challenges = [
 
 const AchievementCard = ({ achievement }: { achievement: typeof achievements[0] }) => {
     return (
-        <Card className="rounded-2xl border-2 border-green-200 bg-white shadow-sm">
+        <Card className="rounded-2xl border-2 border-green-200 dark:border-green-800 bg-white dark:bg-card shadow-sm">
             <CardContent className="p-4">
                 <div className="flex items-center gap-4">
                     <div className={`p-3 rounded-full ${achievement.iconBg}`}>
@@ -116,14 +116,14 @@ const AchievementCard = ({ achievement }: { achievement: typeof achievements[0] 
 
 const ChallengeCard = ({ challenge }: { challenge: typeof challenges[0] }) => {
     return (
-        <Card className="rounded-2xl bg-white shadow-sm overflow-hidden">
+        <Card className="rounded-2xl bg-white dark:bg-card shadow-sm overflow-hidden">
             <CardContent className="p-4">
                 <div className="flex justify-between items-start">
                     <div>
                         <p className="font-bold text-base">{challenge.title}</p>
                         <p className="text-sm text-muted-foreground mt-1">{challenge.description}</p>
                     </div>
-                    <Badge variant="outline" className="bg-orange-100 text-orange-600 border-orange-200 font-semibold">{challenge.timeLeft}</Badge>
+                    <Badge variant="outline" className="bg-orange-100 text-orange-600 border-orange-200 dark:bg-orange-900/50 dark:text-orange-300 dark:border-orange-800 font-semibold">{challenge.timeLeft}</Badge>
                 </div>
 
                 <div className="mt-3">
@@ -140,8 +140,8 @@ const ChallengeCard = ({ challenge }: { challenge: typeof challenges[0] }) => {
 
 export function LeaderboardClient() {
   return (
-    <div className="flex flex-col min-h-screen bg-slate-50">
-      <header className="sticky top-0 z-40 w-full bg-slate-50/95">
+    <div className="flex flex-col min-h-screen bg-slate-50 dark:bg-slate-900">
+      <header className="sticky top-0 z-40 w-full bg-slate-50/95 dark:bg-slate-900/95">
         <div className="container flex h-20 items-center">
             <h1 className="text-3xl font-bold">Achievements</h1>
         </div>
@@ -150,7 +150,7 @@ export function LeaderboardClient() {
       <main className="flex-1 overflow-y-auto pb-24">
         <div className="container mx-auto px-4 space-y-6">
             <Tabs defaultValue="challenges">
-                <TabsList className="grid w-full grid-cols-2 bg-slate-200/75 rounded-full h-12 p-1">
+                <TabsList className="grid w-full grid-cols-2 bg-slate-200/75 dark:bg-slate-800 rounded-full h-12 p-1">
                     <TabsTrigger value="achievements" className="rounded-full text-base font-semibold data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md">Achievements</TabsTrigger>
                     <TabsTrigger value="challenges" className="rounded-full text-base font-semibold data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md">Challenges</TabsTrigger>
                 </TabsList>
@@ -185,13 +185,13 @@ export function LeaderboardClient() {
                     </div>
                 </TabsContent>
                 <TabsContent value="challenges" className="mt-6">
-                   <Card className="rounded-2xl shadow-md bg-primary/10 border-primary/20">
+                   <Card className="rounded-2xl shadow-md bg-primary/10 dark:bg-primary/20 border-primary/20 dark:border-primary/40">
                        <CardContent className="p-5">
                            <div className="flex items-center gap-3">
                                <Zap className="h-6 w-6 text-primary"/>
                                <div>
                                    <h3 className="text-lg font-bold text-primary">Weekly Challenges</h3>
-                                   <p className="text-sm text-primary/80">Complete challenges to earn bonus points and exclusive badges!</p>
+                                   <p className="text-sm text-primary/80 dark:text-primary-foreground/80">Complete challenges to earn bonus points and exclusive badges!</p>
                                </div>
                            </div>
                        </CardContent>
