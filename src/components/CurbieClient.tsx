@@ -56,12 +56,16 @@ export function CurbieClient() {
         };
         setUserLocation(newUserLocation);
       },
-      () => {
-        // Handle error or permission denied
-        console.warn("Could not get user location.");
+      (error) => {
+        console.warn("Could not get user location: ", error.message);
+        toast({
+            variant: "destructive",
+            title: "Location Permission Denied",
+            description: "Please grant location permission in your browser settings to use location features.",
+        });
       }
     );
-  }, []);
+  }, [toast]);
 
   const handleToggleParkingState = useCallback(() => {
     if (isParking) {
@@ -79,9 +83,14 @@ export function CurbieClient() {
       });
     } else {
       // Logic for parking
-      if (userLocation) {
+      const locationRequestHandler = (position: GeolocationPosition) => {
+        const newLocation = {
+          lat: position.coords.latitude,
+          lng: position.coords.longitude,
+        };
+        setUserLocation(newLocation);
         setIsParking(true);
-        setParkedLocation(userLocation);
+        setParkedLocation(newLocation);
         toast({
           title: (
             <div className="flex items-center gap-2">
@@ -91,12 +100,21 @@ export function CurbieClient() {
           ),
           description: `Enjoy your time! We'll remember where you parked.`,
         });
-      } else {
-        toast({
+      }
+
+      const errorRequestHandler = (error: GeolocationPositionError) => {
+         console.warn("Could not get user location: ", error.message);
+         toast({
           variant: "destructive",
           title: "Could not get location",
           description: "Please grant location permission and try again.",
         });
+      }
+      
+      if (userLocation) {
+         navigator.geolocation.getCurrentPosition(locationRequestHandler, errorRequestHandler);
+      } else {
+         navigator.geolocation.getCurrentPosition(locationRequestHandler, errorRequestHandler);
       }
     }
   }, [isParking, userLocation, toast]);
@@ -119,7 +137,7 @@ export function CurbieClient() {
                 options={MAP_OPTIONS}
               >
                 {userLocation && <Marker position={userLocation} />}
-                {parkedLocation && <Marker position={parkedLocation} icon={{ url: '/car-icon.svg', scaledSize: new window.google.maps.Size(40, 40) }} />}
+                {parkedLocation && <Marker position={parkedLocation} icon={{ url: 'data:image/svg+xml;charset=UTF-8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="black" width="48px" height="48px"><path d="M0 0h24v24H0z" fill="none"/><path d="M18.92 6.01C18.72 5.42 18.16 5 17.5 5h-11c-.66 0-1.21.42-1.42 1.01L3 12v8c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-1h12v1c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-8l-2.08-5.99zM6.5 16c-.83 0-1.5-.67-1.5-1.5S5.67 13 6.5 13s1.5.67 1.5 1.5S7.33 16 6.5 16zm11 0c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5zM5 11l1.5-4.5h11L19 11H5z"/></svg>', scaledSize: new window.google.maps.Size(48, 48) }} />}
               </GoogleMap>
             ) : (
               <div className="h-full w-full bg-muted rounded-2xl flex items-center justify-center">
