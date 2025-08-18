@@ -44,7 +44,7 @@ export function CurbieClient() {
   const { toast } = useToast();
 
   const { isLoaded, loadError } = useJsApiLoader({
-    googleMapsApiKey: "AIzaSyBAplFS33D_DNgDLhMfc95mwdWp_NUjBGA",
+    googleMapsApiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || "",
   });
 
   useEffect(() => {
@@ -64,20 +64,6 @@ export function CurbieClient() {
   }, []);
 
   const handleToggleParkingState = useCallback(() => {
-    const park = (location: { lat: number; lng: number }) => {
-      setIsParking(true);
-      setParkedLocation(location);
-      toast({
-        title: (
-          <div className="flex items-center gap-2">
-            <ParkingCircle className="h-5 w-5 text-yellow-500" />
-            <span className="font-semibold">You've Parked</span>
-          </div>
-        ),
-        description: `Enjoy your time! We'll remember where you parked.`,
-      });
-    };
-
     if (isParking) {
       // Logic for leaving
       setIsParking(false);
@@ -94,25 +80,23 @@ export function CurbieClient() {
     } else {
       // Logic for parking
       if (userLocation) {
-        park(userLocation);
+        setIsParking(true);
+        setParkedLocation(userLocation);
+        toast({
+          title: (
+            <div className="flex items-center gap-2">
+              <ParkingCircle className="h-5 w-5 text-yellow-500" />
+              <span className="font-semibold">You've Parked</span>
+            </div>
+          ),
+          description: `Enjoy your time! We'll remember where you parked.`,
+        });
       } else {
-        navigator.geolocation.getCurrentPosition(
-          (position) => {
-            const newUserLocation = {
-              lat: position.coords.latitude,
-              lng: position.coords.longitude,
-            };
-            setUserLocation(newUserLocation);
-            park(newUserLocation);
-          },
-          () => {
-            toast({
-              variant: "destructive",
-              title: "Could not get location",
-              description: "Please grant location permission and try again.",
-            });
-          }
-        );
+        toast({
+          variant: "destructive",
+          title: "Could not get location",
+          description: "Please grant location permission and try again.",
+        });
       }
     }
   }, [isParking, userLocation, toast]);
