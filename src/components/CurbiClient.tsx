@@ -44,7 +44,7 @@ export function CurbiClient() {
   const { toast } = useToast();
 
   const { isLoaded, loadError } = useJsApiLoader({
-    googleMapsApiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || "",
+    googleMapsApiKey: "AIzaSyAekdj055Smrs5UAZtfn8cbhuCKpa-H-wg",
   });
 
   useEffect(() => {
