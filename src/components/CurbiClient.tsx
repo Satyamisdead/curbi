@@ -31,7 +31,7 @@ const DEFAULT_CENTER = {
 };
 
 const MAP_OPTIONS = {
-  disableDefaultUI: false,
+  disableDefaultUI: true,
   zoomControl: true,
 };
 
