@@ -24,8 +24,8 @@ export function BottomNav() {
                         return (
                             <li key={item.label}>
                                 <Link href={item.href} className="flex flex-col items-center gap-1">
-                                    <item.icon className={cn("h-6 w-6", isActive ? "text-primary" : "text-muted-foreground")} />
-                                    <span className={cn("text-xs", isActive ? "text-primary font-semibold" : "text-muted-foreground")}>
+                                    <item.icon className={cn("h-6 w-6", isActive ? "text-accent" : "text-muted-foreground")} />
+                                    <span className={cn("text-xs", isActive ? "text-accent font-semibold" : "text-muted-foreground")}>
                                         {item.label}
                                     </span>
                                 </Link>

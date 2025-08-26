@@ -31,8 +31,9 @@ const DEFAULT_CENTER = {
 };
 
 const MAP_OPTIONS = {
-  disableDefaultUI: true,
+  disableDefaultUI: false,
   zoomControl: true,
+  streetViewControl: false,
 };
 
 
@@ -146,7 +147,7 @@ export function CurbiClient() {
 
           <Button
             size="lg"
-            className={`w-full h-24 rounded-2xl text-left flex items-center gap-4 shadow-lg transition-all duration-300 ${isParking ? 'bg-blue-600 hover:bg-blue-600/90 text-primary-foreground' : 'bg-yellow-400 hover:bg-yellow-400/90 text-yellow-900'}`}
+            className={`w-full h-24 rounded-2xl text-left flex items-center gap-4 shadow-lg transition-all duration-300 ${isParking ? 'bg-[#FF073A] hover:bg-[#FF073A]/90 text-primary-foreground' : 'bg-[#39FF14] hover:bg-[#39FF14]/90 text-[#1A1A1A]'}`}
             onClick={handleToggleParkingState}
           >
             {isParking ? <Car className="h-8 w-8" /> : <ParkingCircle className="h-8 w-8" />}
