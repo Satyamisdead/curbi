@@ -58,14 +58,9 @@ export function CurbiClient() {
       },
       (error) => {
         console.warn("Could not get user location: ", error.message);
-        toast({
-            variant: "destructive",
-            title: "Location Permission Denied",
-            description: "Please grant location permission in your browser settings to use location features.",
-        });
       }
     );
-  }, [toast]);
+  }, []);
 
   const handleToggleParkingState = useCallback(() => {
     if (isParking) {
@@ -104,11 +99,6 @@ export function CurbiClient() {
 
       const errorRequestHandler = (error: GeolocationPositionError) => {
          console.warn("Could not get user location: ", error.message);
-         toast({
-          variant: "destructive",
-          title: "Could not get location",
-          description: "Please grant location permission and try again.",
-        });
       }
       
       if (userLocation) {
