@@ -147,14 +147,11 @@ export function CurbiClient() {
 
           <Button
             size="lg"
-            className={`w-full h-24 rounded-2xl text-left flex items-center gap-4 shadow-lg transition-all duration-300 ${isParking ? 'bg-[#FF073A] hover:bg-[#FF073A]/90 text-primary-foreground' : 'bg-[#39FF14] hover:bg-[#39FF14]/90 text-[#1A1A1A]'}`}
+            className={`w-full h-24 rounded-2xl text-2xl justify-center font-bold flex items-center gap-4 shadow-lg transition-all duration-300 ${isParking ? 'bg-[#FF073A] hover:bg-[#FF073A]/90 text-primary-foreground' : 'bg-[#39FF14] hover:bg-[#39FF14]/90 text-[#1A1A1A]'}`}
             onClick={handleToggleParkingState}
           >
             {isParking ? <Car className="h-8 w-8" /> : <ParkingCircle className="h-8 w-8" />}
-            <div>
-              <p className="font-bold text-xl">{isParking ? "I'm Leaving" : "I am Parking"}</p>
-              <p className="font-normal opacity-90">{isParking ? "Tap to report your parking spot as available" : "Tap to remember where you parked"}</p>
-            </div>
+            {isParking ? "LEAVING" : "PARKED"}
           </Button>
 
           <div>
