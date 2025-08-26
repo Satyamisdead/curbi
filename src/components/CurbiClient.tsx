@@ -99,15 +99,23 @@ export function CurbiClient() {
 
       const errorRequestHandler = (error: GeolocationPositionError) => {
          console.warn("Could not get user location: ", error.message);
+         // Simulate parking with default location if permission is denied
+         setIsParking(true);
+         setParkedLocation(DEFAULT_CENTER);
+         toast({
+          title: (
+            <div className="flex items-center gap-2">
+              <ParkingCircle className="h-5 w-5 text-yellow-500" />
+              <span className="font-semibold">You've Parked (Demo)</span>
+            </div>
+          ),
+          description: `Enjoy your time! We'll remember where you parked.`,
+        });
       }
       
-      if (userLocation) {
-         navigator.geolocation.getCurrentPosition(locationRequestHandler, errorRequestHandler);
-      } else {
-         navigator.geolocation.getCurrentPosition(locationRequestHandler, errorRequestHandler);
-      }
+      navigator.geolocation.getCurrentPosition(locationRequestHandler, errorRequestHandler);
     }
-  }, [isParking, userLocation, toast]);
+  }, [isParking, toast]);
 
   const mapCenter = userLocation || DEFAULT_CENTER;
 
