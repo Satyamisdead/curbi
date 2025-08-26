@@ -11,7 +11,7 @@ import { Label } from '@/components/ui/label';
 import { Star, Check, Trophy, User, Moon, Sun } from 'lucide-react';
 
 const user = {
-    name: 'Curbie User',
+    name: 'Curbi User',
     rank: 8,
     points: 245,
     spotsReported: 12,

@@ -1,9 +1,9 @@
-import { CurbieClient } from '@/components/CurbieClient';
+import { CurbiClient } from '@/components/CurbiClient';
 
 export default function Home() {
   return (
     <main>
-      <CurbieClient />
+      <CurbiClient />
     </main>
   );
 }
