@@ -152,7 +152,7 @@ export function CurbiClient() {
 
   const mapCenter = userLocation || DEFAULT_CENTER;
   
-  const parkingMarkerIcon = isLoaded ? {
+  const parkingMarkerIcon = (isLoaded && window.google) ? {
     path: window.google.maps.SymbolPath.CIRCLE,
     scale: 8,
     fillColor: "#1F51FF",
@@ -185,7 +185,11 @@ export function CurbiClient() {
                 >
                   {userLocation && <Marker position={userLocation} title="You are here!" />}
                   {parkedLocation && parkedCarIcon && <Marker position={parkedLocation} icon={parkedCarIcon} />}
-                  {parkingMarkerIcon && socrataSpots.map((spot) => (
+                  {parkingMarkerIcon && socrataSpots.map((spot) => {
+                    if (!spot.the_geom) {
+                      return null;
+                    }
+                    return (
                     <Marker 
                       key={spot.objectid} 
                       position={{ lat: spot.the_geom.coordinates[1], lng: spot.the_geom.coordinates[0] }} 
@@ -193,7 +197,7 @@ export function CurbiClient() {
                       title={spot.sign}
                       icon={parkingMarkerIcon} 
                     />
-                  ))}
+                  )})}
                 </GoogleMap>
                 <button
                   onClick={handleLocateMe}
@@ -232,5 +236,3 @@ export function CurbiClient() {
     </div>
   );
 }
-
-    
