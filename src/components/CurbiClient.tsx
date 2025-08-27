@@ -1,14 +1,14 @@
 
 "use client";
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import type { ParkingSpot } from '@/types';
 import { Header } from '@/components/Header';
 import { SpotListItem } from '@/components/SpotListItem';
 import { BottomNav } from '@/components/BottomNav';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
-import { Car, CheckCircle, ParkingCircle } from 'lucide-react';
+import { Car, CheckCircle, ParkingCircle, Navigation } from 'lucide-react';
 import { GoogleMap, useJsApiLoader, Marker } from '@react-google-maps/api';
 
 const MOCK_SPOTS: ParkingSpot[] = [
@@ -16,6 +16,12 @@ const MOCK_SPOTS: ParkingSpot[] = [
   { id: 'spot2', name: 'Uptown Garage', address: '456 Oak Ave, Uptown', price: 2.75, distance: 1.2, rating: 4.2, isFavorite: true, availableSince: '1m ago', position: { lat: 40.760, lng: -73.986 } },
   { id: 'spot3', name: 'River Lot', address: '789 River Rd, Riverside', price: 1.50, distance: 2.5, rating: 3.8, isFavorite: false, availableSince: '6m ago', position: { lat: 40.755, lng: -73.990 } },
   { id: 'spot4', name: 'Mall Parking East', address: '101 Shopping Ctr, Eastwood', price: 5.00, distance: 4.1, rating: 4.8, isFavorite: false, availableSince: '12m ago', position: { lat: 40.765, lng: -73.980 } },
+];
+
+const NY_PARKING_SPOTS = [
+    { lat: 40.741895, lng: -73.989308 }, // Example: Manhattan
+    { lat: 40.73061, lng: -73.935242 },  // Example: Brooklyn
+    { lat: 40.7527, lng: -73.9772 }      // Example: Midtown
 ];
 
 const MAP_CONTAINER_STYLE = {
@@ -26,14 +32,13 @@ const MAP_CONTAINER_STYLE = {
 };
 
 const DEFAULT_CENTER = {
-  lat: 40.758896,
-  lng: -73.985130
+  lat: 40.7128,
+  lng: -74.0060
 };
 
 const MAP_OPTIONS = {
-  disableDefaultUI: false,
+  disableDefaultUI: true,
   zoomControl: true,
-  streetViewControl: false,
 };
 
 
@@ -42,25 +47,38 @@ export function CurbiClient() {
   const [isParking, setIsParking] = useState(false);
   const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
   const [parkedLocation, setParkedLocation] = useState<{ lat: number; lng: number } | null>(null);
+  const mapRef = useRef<google.maps.Map | null>(null);
   const { toast } = useToast();
 
   const { isLoaded, loadError } = useJsApiLoader({
     googleMapsApiKey: "AIzaSyAekdj055Smrs5UAZtfn8cbhuCKpa-H-wg",
   });
 
-  useEffect(() => {
-    navigator.geolocation.getCurrentPosition(
-      (position) => {
-        const newUserLocation = {
-          lat: position.coords.latitude,
-          lng: position.coords.longitude,
-        };
-        setUserLocation(newUserLocation);
-      },
-      (error) => {
-        console.warn("Could not get user location: ", error.message);
-      }
-    );
+  const onMapLoad = useCallback((map: google.maps.Map) => {
+    mapRef.current = map;
+  }, []);
+
+  const handleLocateMe = useCallback(() => {
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          const pos = {
+            lat: position.coords.latitude,
+            lng: position.coords.longitude,
+          };
+          setUserLocation(pos);
+          if(mapRef.current) {
+            mapRef.current.setCenter(pos);
+            mapRef.current.setZoom(16);
+          }
+        },
+        () => {
+          alert("Error: Geolocation failed.");
+        }
+      );
+    } else {
+      alert("Error: Your browser doesn’t support geolocation.");
+    }
   }, []);
 
   const handleToggleParkingState = useCallback(() => {
@@ -98,8 +116,7 @@ export function CurbiClient() {
         });
       }
 
-      const errorRequestHandler = (error: GeolocationPositionError) => {
-         console.warn("Could not get user location: ", error.message);
+      const errorRequestHandler = () => {
          // Simulate parking with default location if permission is denied
          setIsParking(true);
          setParkedLocation(DEFAULT_CENTER);
@@ -119,6 +136,20 @@ export function CurbiClient() {
   }, [isParking, toast]);
 
   const mapCenter = userLocation || DEFAULT_CENTER;
+  
+  const parkingMarkerIcon = isLoaded ? {
+    path: window.google.maps.SymbolPath.CIRCLE,
+    scale: 8,
+    fillColor: "#1F51FF",
+    fillOpacity: 1,
+    strokeColor: "#fff",
+    strokeWeight: 2,
+  } : undefined;
+
+  const parkedCarIcon = isLoaded ? {
+      url: 'data:image/svg+xml;charset=UTF-8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="black" width="48px" height="48px"><path d="M0 0h24v24H0z" fill="none"/><path d="M18.92 6.01C18.72 5.42 18.16 5 17.5 5h-11c-.66 0-1.21.42-1.42 1.01L3 12v8c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-1h12v1c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-8l-2.08-5.99zM6.5 16c-.83 0-1.5-.67-1.5-1.5S5.67 13 6.5 13s1.5.67 1.5 1.5S7.33 16 6.5 16zm11 0c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5zM5 11l1.5-4.5h11L19 11H5z"/></svg>',
+      scaledSize: new window.google.maps.Size(48, 48)
+  } : undefined;
 
   return (
     <div className="flex flex-col min-h-screen bg-background">
@@ -126,18 +157,36 @@ export function CurbiClient() {
       <main className="flex-1 overflow-y-auto pb-24">
         <div className="container mx-auto px-4 py-6 space-y-6">
 
-          <div className="h-[400px] w-full">
+          <div className="h-[400px] w-full relative">
             {loadError && <div>Map cannot be loaded right now, sorry.</div>}
             {isLoaded ? (
-              <GoogleMap
-                mapContainerStyle={MAP_CONTAINER_STYLE}
-                center={mapCenter}
-                zoom={14}
-                options={MAP_OPTIONS}
-              >
-                {userLocation && <Marker position={userLocation} />}
-                {parkedLocation && <Marker position={parkedLocation} icon={{ url: 'data:image/svg+xml;charset=UTF-8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="black" width="48px" height="48px"><path d="M0 0h24v24H0z" fill="none"/><path d="M18.92 6.01C18.72 5.42 18.16 5 17.5 5h-11c-.66 0-1.21.42-1.42 1.01L3 12v8c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-1h12v1c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-8l-2.08-5.99zM6.5 16c-.83 0-1.5-.67-1.5-1.5S5.67 13 6.5 13s1.5.67 1.5 1.5S7.33 16 6.5 16zm11 0c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5zM5 11l1.5-4.5h11L19 11H5z"/></svg>', scaledSize: new window.google.maps.Size(48, 48) }} />}
-              </GoogleMap>
+              <>
+                <GoogleMap
+                  mapContainerStyle={MAP_CONTAINER_STYLE}
+                  center={mapCenter}
+                  zoom={14}
+                  options={MAP_OPTIONS}
+                  onLoad={onMapLoad}
+                >
+                  {userLocation && <Marker position={userLocation} title="You are here!" />}
+                  {parkedLocation && <Marker position={parkedLocation} icon={parkedCarIcon} />}
+                  {NY_PARKING_SPOTS.map((spot, index) => (
+                    <Marker 
+                      key={index} 
+                      position={spot} 
+                      label={{text: "P", color: "white"}}
+                      title="Parking Spot"
+                      icon={parkingMarkerIcon} 
+                    />
+                  ))}
+                </GoogleMap>
+                <button
+                  onClick={handleLocateMe}
+                  className="absolute top-4 left-1/2 -translate-x-1/2 bg-white text-gray-800 font-semibold py-2 px-4 rounded-full shadow-md hover:bg-gray-100 transition-colors z-10"
+                >
+                  📍 Locate Me
+                </button>
+              </>
             ) : (
               <div className="h-full w-full bg-muted rounded-2xl flex items-center justify-center">
                 <p>Loading Map...</p>
