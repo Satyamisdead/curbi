@@ -38,7 +38,8 @@ const DEFAULT_CENTER = {
 
 const MAP_OPTIONS = {
   disableDefaultUI: true,
-  zoomControl: true,
+  zoomControl: false,
+  streetViewControl: false,
 };
 
 
@@ -71,6 +72,11 @@ export function CurbiClient() {
             mapRef.current.setCenter(pos);
             mapRef.current.setZoom(16);
           }
+          new google.maps.Marker({
+              position: pos,
+              map: mapRef.current,
+              title: "You are here!",
+            });
         },
         () => {
           alert("Error: Geolocation failed.");
@@ -146,7 +152,7 @@ export function CurbiClient() {
     strokeWeight: 2,
   } : undefined;
 
-  const parkedCarIcon = isLoaded ? {
+  const parkedCarIcon = (isLoaded && window.google) ? {
       url: 'data:image/svg+xml;charset=UTF-8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="black" width="48px" height="48px"><path d="M0 0h24v24H0z" fill="none"/><path d="M18.92 6.01C18.72 5.42 18.16 5 17.5 5h-11c-.66 0-1.21.42-1.42 1.01L3 12v8c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-1h12v1c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-8l-2.08-5.99zM6.5 16c-.83 0-1.5-.67-1.5-1.5S5.67 13 6.5 13s1.5.67 1.5 1.5S7.33 16 6.5 16zm11 0c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5zM5 11l1.5-4.5h11L19 11H5z"/></svg>',
       scaledSize: new window.google.maps.Size(48, 48)
   } : undefined;
@@ -170,7 +176,7 @@ export function CurbiClient() {
                 >
                   {userLocation && <Marker position={userLocation} title="You are here!" />}
                   {parkedLocation && parkedCarIcon && <Marker position={parkedLocation} icon={parkedCarIcon} />}
-                  {NY_PARKING_SPOTS.map((spot, index) => (
+                  {parkingMarkerIcon && NY_PARKING_SPOTS.map((spot, index) => (
                     <Marker 
                       key={index} 
                       position={spot} 
