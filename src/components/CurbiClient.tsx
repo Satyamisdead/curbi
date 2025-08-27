@@ -169,7 +169,7 @@ export function CurbiClient() {
                   onLoad={onMapLoad}
                 >
                   {userLocation && <Marker position={userLocation} title="You are here!" />}
-                  {parkedLocation && <Marker position={parkedLocation} icon={parkedCarIcon} />}
+                  {parkedLocation && parkedCarIcon && <Marker position={parkedLocation} icon={parkedCarIcon} />}
                   {NY_PARKING_SPOTS.map((spot, index) => (
                     <Marker 
                       key={index} 
@@ -182,7 +182,7 @@ export function CurbiClient() {
                 </GoogleMap>
                 <button
                   onClick={handleLocateMe}
-                  className="absolute top-4 left-1/2 -translate-x-1/2 bg-white text-gray-800 font-semibold py-2 px-4 rounded-full shadow-md hover:bg-gray-100 transition-colors z-10"
+                  className="custom-map-control-button"
                 >
                   📍 Locate Me
                 </button>
