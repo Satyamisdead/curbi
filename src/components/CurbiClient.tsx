@@ -2,7 +2,7 @@
 "use client";
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import type { ParkingSpot } from '@/types';
+import type { ParkingSpot, SocrataSpot } from '@/types';
 import { Header } from '@/components/Header';
 import { SpotListItem } from '@/components/SpotListItem';
 import { BottomNav } from '@/components/BottomNav';
@@ -16,12 +16,6 @@ const MOCK_SPOTS: ParkingSpot[] = [
   { id: 'spot2', name: 'Uptown Garage', address: '456 Oak Ave, Uptown', price: 2.75, distance: 1.2, rating: 4.2, isFavorite: true, availableSince: '1m ago', position: { lat: 40.760, lng: -73.986 } },
   { id: 'spot3', name: 'River Lot', address: '789 River Rd, Riverside', price: 1.50, distance: 2.5, rating: 3.8, isFavorite: false, availableSince: '6m ago', position: { lat: 40.755, lng: -73.990 } },
   { id: 'spot4', name: 'Mall Parking East', address: '101 Shopping Ctr, Eastwood', price: 5.00, distance: 4.1, rating: 4.8, isFavorite: false, availableSince: '12m ago', position: { lat: 40.765, lng: -73.980 } },
-];
-
-const NY_PARKING_SPOTS = [
-    { lat: 40.741895, lng: -73.989308 }, // Example: Manhattan
-    { lat: 40.73061, lng: -73.935242 },  // Example: Brooklyn
-    { lat: 40.7527, lng: -73.9772 }      // Example: Midtown
 ];
 
 const MAP_CONTAINER_STYLE = {
@@ -45,6 +39,7 @@ const MAP_OPTIONS = {
 
 export function CurbiClient() {
   const [spots] = useState<ParkingSpot[]>(MOCK_SPOTS);
+  const [socrataSpots, setSocrataSpots] = useState<SocrataSpot[]>([]);
   const [isParking, setIsParking] = useState(false);
   const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
   const [parkedLocation, setParkedLocation] = useState<{ lat: number; lng: number } | null>(null);
@@ -54,6 +49,20 @@ export function CurbiClient() {
   const { isLoaded, loadError } = useJsApiLoader({
     googleMapsApiKey: "AIzaSyAekdj055Smrs5UAZtfn8cbhuCKpa-H-wg",
   });
+
+  useEffect(() => {
+    const fetchParkingData = async () => {
+      try {
+        const response = await fetch('https://data.cityofnewyork.us/resource/nfid-uabd.json');
+        const data = await response.json();
+        setSocrataSpots(data);
+      } catch (error) {
+        console.error("Failed to fetch Socrata data:", error);
+      }
+    };
+
+    fetchParkingData();
+  }, []);
 
   const onMapLoad = useCallback((map: google.maps.Map) => {
     mapRef.current = map;
@@ -176,12 +185,12 @@ export function CurbiClient() {
                 >
                   {userLocation && <Marker position={userLocation} title="You are here!" />}
                   {parkedLocation && parkedCarIcon && <Marker position={parkedLocation} icon={parkedCarIcon} />}
-                  {parkingMarkerIcon && NY_PARKING_SPOTS.map((spot, index) => (
+                  {parkingMarkerIcon && socrataSpots.map((spot) => (
                     <Marker 
-                      key={index} 
-                      position={spot} 
+                      key={spot.objectid} 
+                      position={{ lat: spot.the_geom.coordinates[1], lng: spot.the_geom.coordinates[0] }} 
                       label={{text: "P", color: "white"}}
-                      title="Parking Spot"
+                      title={spot.sign}
                       icon={parkingMarkerIcon} 
                     />
                   ))}
@@ -223,3 +232,5 @@ export function CurbiClient() {
     </div>
   );
 }
+
+    
