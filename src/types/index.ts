@@ -1,4 +1,3 @@
-
 export interface ParkingSpot {
   id: string;
   name: string;
@@ -27,4 +26,34 @@ export interface SocrataSpot {
   side_of_st: string;
 }
 
-    
+export interface User {
+  name: string;
+  rank: number;
+  points: number;
+  spotsReported: number;
+  validations: number;
+  avatar?: string;
+}
+
+export interface Achievement {
+  id: string;
+  title: string;
+  description: string;
+  points: number;
+  progress: number;
+  current: number;
+  total: number;
+  completed: boolean;
+  icon: string;
+}
+
+export interface Challenge {
+  id: string;
+  title: string;
+  description: string;
+  points: number;
+  progress: number;
+  current: number;
+  total: number;
+  timeLeft: string;
+}
